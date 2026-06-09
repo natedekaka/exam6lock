@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    container_name: exam6-app
+    container_name: exam6lock-app
     ports:
       - "8080:80"
     volumes:
@@ -9,14 +9,21 @@ services:
     depends_on:
       - db
       - redis
+    environment:
+      REDIS_HOST: redis
+      DB_HOST: db
+      DB_USER: root
+      DB_PASS: rootpass
+      DB_NAME: ujian_online
+      TZ: Asia/Jakarta
     networks:
-      - exam6-net
+      - exam6lock-net
     restart: unless-stopped
 
 
   redis:
     image: docker.io/library/redis:7-alpine
-    container_name: exam6-redis
+    container_name: exam6lock-redis
     command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -24,13 +31,13 @@ services:
       timeout: 3s
       retries: 3
     networks:
-      - exam6-net
+      - exam6lock-net
     restart: unless-stopped
 
 
   db:
     image: docker.io/library/mysql:8.0
-    container_name: exam6-db
+    container_name: exam6lock-db
     command: >
       --max_connections=500
       --innodb_buffer_pool_size=4G
@@ -54,15 +61,15 @@ services:
       - "3313:3306"
     volumes:
       - ./migrations:/docker-entrypoint-initdb.d:ro
-      - exam6-dbdata:/var/lib/mysql:z
+      - exam6lock-dbdata:/var/lib/mysql:z
     networks:
-      - exam6-net
+      - exam6lock-net
     restart: unless-stopped
 
 
   phpmyadmin:
     image: docker.io/library/phpmyadmin:latest
-    container_name: exam6-pma
+    container_name: exam6lock-pma
     ports:
       - "8081:80"
     environment:
@@ -71,12 +78,12 @@ services:
     depends_on:
       - db
     networks:
-      - exam6-net
+      - exam6lock-net
     restart: unless-stopped
 
 volumes:
-  exam6-dbdata:
+  exam6lock-dbdata:
 
 networks:
-  exam6-net:
+  exam6lock-net:
     driver: bridge

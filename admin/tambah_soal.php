@@ -21,6 +21,7 @@ if (!isset($_SESSION['csrf_token_time']) || time() - $_SESSION['csrf_token_time'
 
 require_once '../config/database.php';
 require_once '../config/init_sekolah.php';
+require_once '../config/audit_helper.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
@@ -98,7 +99,16 @@ $message_type = '';
 
 $ujian_list = $conn->query("SELECT id, judul_ujian, status FROM ujian ORDER BY judul_ujian");
 
-$selected_ujian = isset($_GET['ujian']) ? (int)$_GET['ujian'] : ($ujian_list->fetch_assoc()['id'] ?? 0);
+$all_mode = isset($_GET['all']) && $_GET['all'] === '1';
+if ($all_mode) {
+    $selected_ujian = 0;
+} else {
+    $selected_ujian = isset($_GET['ujian']) ? (int)$_GET['ujian'] : 0;
+    if ($selected_ujian <= 0) {
+        $first = $ujian_list->fetch_assoc();
+        $selected_ujian = $first['id'] ?? 0;
+    }
+}
 if ($selected_ujian > 0) {
     $ujian_list->data_seek(0);
 }
@@ -231,12 +241,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_soal'])) {
                 
                 if ($stmt->execute()) {
                     $message_type = 'success';
+                    $soal_id = $edit_id > 0 ? $edit_id : $stmt->insert_id;
+                    $aksi = $edit_id > 0 ? 'UPDATE' : 'CREATE';
+                    logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], $aksi, 'SOAL', $soal_id, 'Soal untuk ujian ID: ' . $id_ujian);
                 } else {
                     $message = "Gagal menyimpan: " . $stmt->error;
                     $message_type = 'danger';
                 }
                 $stmt->close();
             }
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['copy_soal'])) {
+    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+        $message = 'Token keamanan tidak valid';
+        $message_type = 'danger';
+    } else {
+        $edit_id = isset($_POST['edit_id']) ? (int)$_POST['edit_id'] : 0;
+        $target_ujian = isset($_POST['copy_target_ujian']) ? (int)$_POST['copy_target_ujian'] : 0;
+
+        if ($edit_id > 0 && $target_ujian > 0) {
+            $stmt = $conn->prepare("SELECT * FROM soal WHERE id = ?");
+            $stmt->bind_param("i", $edit_id);
+            $stmt->execute();
+            $soal = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if ($soal) {
+                $check = $conn->prepare("SELECT id FROM soal WHERE id_ujian = ? AND pertanyaan = ?");
+                $check->bind_param("is", $target_ujian, $soal['pertanyaan']);
+                $check->execute();
+                $exists = $check->get_result()->fetch_assoc();
+                $check->close();
+
+                if ($exists) {
+                    $message = "Soal sudah ada di ujian tujuan!";
+                    $message_type = 'warning';
+                } else {
+                    $stmt = $conn->prepare("INSERT INTO soal (id_ujian, pertanyaan, gambar_pertanyaan, opsi_a, gambar_a, opsi_b, gambar_b, opsi_c, gambar_c, opsi_d, gambar_d, opsi_e, gambar_e, kunci_jawaban, poin, kategori, timer_soal) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->bind_param("isssssssssssssisi", $target_ujian, $soal['pertanyaan'], $soal['gambar_pertanyaan'], $soal['opsi_a'], $soal['gambar_a'], $soal['opsi_b'], $soal['gambar_b'], $soal['opsi_c'], $soal['gambar_c'], $soal['opsi_d'], $soal['gambar_d'], $soal['opsi_e'], $soal['gambar_e'], $soal['kunci_jawaban'], $soal['poin'], $soal['kategori'], $soal['timer_soal']);
+                    if ($stmt->execute()) {
+                        $message = "Soal berhasil disalin ke ujian tujuan!";
+                        $message_type = 'success';
+                    } else {
+                        $message = "Gagal menyalin soal!";
+                        $message_type = 'danger';
+                    }
+                    $stmt->close();
+                }
+            } else {
+                $message = "Soal tidak ditemukan!";
+                $message_type = 'danger';
+            }
+        } else {
+            $message = "Pilih ujian tujuan!";
+            $message_type = 'danger';
         }
     }
 }
@@ -304,6 +365,7 @@ if (isset($_GET['hapus']) && isset($_GET['token'])) {
             if ($stmt->execute()) {
                 $message = "Soal berhasil dihapus!";
                 $message_type = 'success';
+                logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'SOAL', $id, 'Menghapus soal untuk ujian ID: ' . $id_ujian);
             }
             $stmt->close();
         }
@@ -326,6 +388,7 @@ if (isset($_GET['bulk_delete']) && isset($_GET['ids']) && isset($_GET['token']))
             if ($stmt->execute()) {
                 $message = "Berhasil menghapus " . $stmt->affected_rows . " soal!";
                 $message_type = 'success';
+                logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'SOAL', 0, 'Bulk delete ' . $stmt->affected_rows . ' soal (ID: ' . $_GET['ids'] . ')');
             }
             $stmt->close();
         }
@@ -379,7 +442,12 @@ if (isset($_POST['bulk_update']) && isset($_POST['bulk_ids'])) {
 }
 
 $soal_list = [];
-if ($selected_ujian > 0) {
+if ($all_mode) {
+    $result = $conn->query("SELECT s.*, u.judul_ujian FROM soal s JOIN ujian u ON s.id_ujian = u.id ORDER BY u.judul_ujian, s.id");
+    while ($row = $result->fetch_assoc()) {
+        $soal_list[] = $row;
+    }
+} elseif ($selected_ujian > 0) {
     $stmt = $conn->prepare("SELECT * FROM soal WHERE id_ujian = ? ORDER BY id");
     $stmt->bind_param("i", $selected_ujian);
     $stmt->execute();
@@ -1097,13 +1165,21 @@ if (isset($_SESSION['import_message'])) {
         <div class="sidebar-menu">
             <a href="index.php"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
             <a href="tambah_soal.php" class="active"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
+            <a href="bank_soal.php"><i class="bi bi-database-fill"></i> Bank Soal Global</a>
             <a href="import_soal.php"><i class="bi bi-upload me-2"></i>Import Massal</a>
             <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
+            <a href="analytics.php"><i class="bi bi-graph-up"></i> Analytics</a>
             <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
             <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
+            <a href="kelola_kelas.php"><i class="bi bi-diagram-3-fill"></i> Kelola Kelas</a>
+            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
+            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
             <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
             <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
+            <a href="backup_restore.php"><i class="bi bi-cloud-arrow-up-fill"></i> Backup & Restore</a>
+            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
             <?php endif; ?>
+            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
             <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
         </div>
     </div>
@@ -1111,12 +1187,12 @@ if (isset($_SESSION['import_message'])) {
     <div class="main-content">
         <div class="page-header animate-fade-in">
             <div class="d-flex align-items-center gap-3">
-                <h3><i class="bi bi-journal-text me-2"></i>Bank Soal</h3>
-                <?php if ($selected_ujian > 0): ?>
+                <h3><i class="bi bi-journal-text me-2"></i>Bank Soal <?= $all_mode ? '<small class="text-muted fs-6 fw-normal">- Semua Ujian</small>' : '' ?></h3>
+                <?php if ($selected_ujian > 0 || $all_mode): ?>
                 <span class="badge bg-primary fs-6"><?= count($soal_list) ?> soal</span>
                 <?php endif; ?>
             </div>
-            <?php if ($selected_ujian > 0 && count($soal_list) > 0): ?>
+            <?php if (!$all_mode && $selected_ujian > 0 && count($soal_list) > 0): ?>
             <a href="ekspor_soal_pdf.php?ujian=<?= $selected_ujian ?>" class="btn btn-success" target="_blank">
                 <i class="bi bi-file-pdf me-1"></i> Export PDF
             </a>
@@ -1143,13 +1219,14 @@ if (isset($_SESSION['import_message'])) {
                 <form method="GET" class="row g-3 align-items-end">
                     <div class="col-md-8">
                         <label class="form-label"><i class="bi bi-file-earmark-text me-1"></i>Pilih Ujian</label>
-                        <select name="ujian" class="form-select" onchange="this.form.submit()">
+                        <select name="ujian" class="form-select" onchange="handleUjianChange(this)">
                             <option value="">-- Pilih Ujian --</option>
+                            <option value="all" <?= $all_mode ? 'selected' : '' ?>>-- Semua Ujian (Bank Global) --</option>
                             <?php 
                             $ujian_list->data_seek(0);
                             while ($ujian = $ujian_list->fetch_assoc()): 
                             ?>
-                            <option value="<?= $ujian['id'] ?>" <?= $selected_ujian == $ujian['id'] ? 'selected' : '' ?>>
+                            <option value="<?= $ujian['id'] ?>" <?= !$all_mode && $selected_ujian == $ujian['id'] ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($ujian['judul_ujian']) ?> (<?= $ujian['status'] ?>)
                             </option>
                             <?php endwhile; ?>
@@ -1159,8 +1236,9 @@ if (isset($_SESSION['import_message'])) {
             </div>
         </div>
 
-        <?php if ($selected_ujian > 0): ?>
+        <?php if ($selected_ujian > 0 || $all_mode): ?>
         
+        <?php if (!$all_mode): ?>
         <div class="card animate-fade-in">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-<?= $edit_soal ? 'pencil-square' : 'plus-circle' ?> me-2"></i><?= $edit_soal ? 'Edit Soal' : 'Tambah Soal Baru' ?></span>
@@ -1353,9 +1431,42 @@ if (isset($_SESSION['import_message'])) {
                             <i class="bi bi-save me-1"></i> <?= $edit_soal ? 'Perbarui' : 'Simpan' ?> Soal
                         </button>
                     </div>
+
+                    <?php if ($edit_soal): ?>
+                    <div class="mt-4 pt-3 border-top">
+                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-copy me-2"></i>Copy Soal ke Ujian Lain</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <select name="copy_target_ujian" class="form-select" form="copyForm">
+                                    <option value="">-- Pilih Ujian Tujuan --</option>
+                                    <?php $ujian_list->data_seek(0); while ($ujian = $ujian_list->fetch_assoc()): ?>
+                                    <option value="<?= $ujian['id'] ?>" <?= $ujian['id'] == $edit_soal['id_ujian'] ? 'disabled' : '' ?>>
+                                        <?= htmlspecialchars($ujian['judul_ujian']) ?>
+                                    </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="submit" name="copy_soal" class="btn btn-outline-primary" form="copyForm" onclick="return confirm('Copy soal ini ke ujian yang dipilih?')">
+                                    <i class="bi bi-copy me-1"></i>Copy ke Ujian Lain
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </form>
+
+                <?php if ($edit_soal): ?>
+                <form method="POST" id="copyForm" style="display:none;">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    <input type="hidden" name="edit_id" value="<?= $edit_soal['id'] ?>">
+                    <input type="hidden" name="id_ujian" value="<?= $selected_ujian ?>">
+                </form>
+                <?php endif; ?>
             </div>
         </div>
+
+        <?php endif; ?>
 
         <div class="card animate-fade-in">
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -1382,6 +1493,9 @@ if (isset($_SESSION['import_message'])) {
                             <tr>
                                 <th class="text-center" style="width: 40px;"><input type="checkbox" id="selectAll"></th>
                                 <th class="text-center" style="width: 50px;">No</th>
+                                <?php if ($all_mode): ?>
+                                <th>Ujian</th>
+                                <?php endif; ?>
                                 <th>Pertanyaan</th>
                                 <th class="text-center" style="width: 70px;">Kat.</th>
                                 <th class="text-center" style="width: 60px;">Timer</th>
@@ -1396,6 +1510,9 @@ if (isset($_SESSION['import_message'])) {
                             <tr>
                                 <td class="text-center"><input type="checkbox" class="soal-checkbox" value="<?= $soal['id'] ?>"></td>
                                 <td class="text-center"><?= $no++ ?></td>
+                                <?php if ($all_mode): ?>
+                                <td><span class="badge bg-secondary"><?= htmlspecialchars($soal['judul_ujian']) ?></span></td>
+                                <?php endif; ?>
                                 <td style="white-space: normal; word-wrap: break-word; min-width: 150px;">
                                     <?= nl2br(htmlspecialchars($soal['pertanyaan'])) ?>
                                 </td>
@@ -1460,7 +1577,7 @@ if (isset($_SESSION['import_message'])) {
                 <?php else: ?>
                 <div class="text-center py-5">
                     <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-                    <p class="text-muted mt-2">Belum ada soal untuk ujian ini</p>
+                    <p class="text-muted mt-2"><?= $all_mode ? 'Belum ada soal di semua ujian' : 'Belum ada soal untuk ujian ini' ?></p>
                 </div>
                 <?php endif; ?>
             </div>
@@ -1474,10 +1591,28 @@ if (isset($_SESSION['import_message'])) {
             </div>
         </div>
         <?php endif; ?>
+        <?php if ($all_mode && !$edit_soal): ?>
+        <div class="card animate-fade-in">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-info-circle text-primary" style="font-size: 2rem;"></i>
+                <p class="text-muted mt-2">Mode Semua Ujian: Anda dapat melihat semua soal dari seluruh ujian. Pilih ujian tertentu untuk menambah atau mengedit soal.</p>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
-    <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
     <script>
+        function handleUjianChange(select) {
+            if (select.value === 'all') {
+                window.location.href = '?all=1';
+            } else if (select.value !== '') {
+                window.location.href = '?ujian=' + select.value;
+            } else {
+                window.location.href = 'tambah_soal.php';
+            }
+        }
+        
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('show');
             document.querySelector('.overlay').classList.toggle('show');
@@ -1682,7 +1817,7 @@ if (isset($_SESSION['import_message'])) {
         }
     </style>
 
-    <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
     <script>
         // Bulk actions functionality
         document.getElementById('selectAll')?.addEventListener('change', function() {

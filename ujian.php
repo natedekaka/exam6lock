@@ -1,6 +1,10 @@
 <?php
 // ujian.php - Halaman Ujian Siswa (Tampilan Baru)
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once 'config/database.php';
 require_once 'config/init_sekolah.php';
 
@@ -24,6 +28,83 @@ $stmt->close();
 
 if (!$ujian) {
     die("Ujian tidak ditemukan");
+}
+
+$has_scheduling = $conn->query("SHOW COLUMNS FROM ujian LIKE 'tanggal_mulai'")->num_rows > 0;
+if ($has_scheduling) {
+    $now = date('Y-m-d H:i:s');
+    if (!empty($ujian['tanggal_mulai']) && $now < $ujian['tanggal_mulai']) {
+        ?>
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Ujian Belum Dimulai</title>
+            <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+            <link href="vendor/fonts/poppins.css" rel="stylesheet">
+            <style>
+                * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif; }
+                body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+                .card { border: none; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card p-5 text-center">
+                            <i class="bi bi-clock text-primary" style="font-size: 5rem;"></i>
+                            <h2 class="mt-4 fw-bold">Ujian Belum Dimulai</h2>
+                            <p class="text-muted"><?= htmlspecialchars($ujian['judul_ujian']) ?></p>
+                            <p class="text-muted">Ujian akan dimulai pada <?= date('d M Y H:i', strtotime($ujian['tanggal_mulai'])) ?></p>
+                            <a href="index.php" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-2"></i>Kembali</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+    if (!empty($ujian['tanggal_selesai']) && $now > $ujian['tanggal_selesai']) {
+        ?>
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Ujian Berakhir</title>
+            <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+            <link href="vendor/fonts/poppins.css" rel="stylesheet">
+            <style>
+                * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif; }
+                body { background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+                .card { border: none; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card p-5 text-center">
+                            <i class="bi bi-x-circle-fill text-danger" style="font-size: 5rem;"></i>
+                            <h2 class="mt-4 fw-bold">Ujian Telah Berakhir</h2>
+                            <p class="text-muted"><?= htmlspecialchars($ujian['judul_ujian']) ?></p>
+                            <p class="text-muted">Ujian telah berakhir pada <?= date('d M Y H:i', strtotime($ujian['tanggal_selesai'])) ?></p>
+                            <a href="index.php" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-2"></i>Kembali</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
 }
 
 if ($ujian['status'] !== 'aktif') {
@@ -868,6 +949,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                             <span class="badge-item warning" id="timerBadge">
                                 <i class="bi bi-stopwatch"></i> <span id="timerDisplay"><?= floor((int)$ujian['waktu_tersedia'] / 60) ?>:<?= sprintf('%02d', (int)$ujian['waktu_tersedia'] % 60) ?>:00</span>
                             </span>
+                            <?php elseif (isset($ujian['durasi_per_soal']) && $ujian['durasi_per_soal'] > 0): ?>
+                            <span class="badge-item warning" id="perSoalTimerBadge">
+                                <i class="bi bi-hourglass-split"></i> <span id="perSoalTimerDisplay"><?= floor((int)$ujian['durasi_per_soal'] / 60) ?>:<?= sprintf('%02d', (int)$ujian['durasi_per_soal'] % 60) ?></span>
+                            </span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -906,17 +991,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             <div id="identitySection">
                 <div class="exam-card">
                     <h5><i class="bi bi-person-badge text-primary"></i> Identitas Siswa</h5>
+                    <?php
+                    $prefill_nis = isset($_SESSION['siswa_nis']) ? htmlspecialchars($_SESSION['siswa_nis']) : '';
+                    $prefill_nama = isset($_SESSION['siswa_nama']) ? htmlspecialchars($_SESSION['siswa_nama']) : '';
+                    $prefill_kelas = isset($_SESSION['siswa_kelas']) ? htmlspecialchars($_SESSION['siswa_kelas']) : '';
+                    ?>
                     <div class="mb-3">
                         <label class="form-label">NIS/Nomor Ujian <span class="text-danger">*</span></label>
-                        <input type="text" name="nis" id="nisInput" class="form-control" required placeholder="Masukkan NIS/Nomor Ujian">
+                        <input type="text" name="nis" id="nisInput" class="form-control" required placeholder="Masukkan NIS/Nomor Ujian" value="<?= $prefill_nis ?>" <?= $prefill_nis ? 'readonly' : '' ?>>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
-                        <input type="text" name="nama" id="namaInput" class="form-control" required placeholder="Masukkan nama">
+                        <input type="text" name="nama" id="namaInput" class="form-control" required placeholder="Masukkan nama" value="<?= $prefill_nama ?>" <?= $prefill_nama ? 'readonly' : '' ?>>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Kelas <span class="text-danger">*</span></label>
-                        <input type="text" name="kelas" id="kelasInput" class="form-control" required placeholder="Contoh: X-1">
+                        <input type="text" name="kelas" id="kelasInput" class="form-control" required placeholder="Contoh: X-1" value="<?= $prefill_kelas ?>" <?= $prefill_kelas ? 'readonly' : '' ?>>
                     </div>
                     <button type="button" class="btn-start" onclick="startWithIdentity()">
                         <i class="bi bi-play-fill me-2"></i>Mulai Ujian
@@ -1106,6 +1196,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             }
             
             loadFromLocalStorage();
+
+            <?php if (isset($_SESSION['siswa_id'])): ?>
+            // Student is logged in - mark identity as saved
+            identitySaved = true;
+            <?php endif; ?>
         }
         
         function loadFromLocalStorage() {
@@ -1503,6 +1598,7 @@ function initExamFeatures() {
             if (currentPage < totalPages) {
                 currentPage++;
                 loadPage(currentPage);
+                if (typeof resetPerSoalTimer === 'function') resetPerSoalTimer();
             }
         }
         
@@ -2691,6 +2787,39 @@ function initExamFeatures() {
         
         updateTimer();
         setInterval(updateTimer, 1000);
+        <?php endif; ?>
+
+        <?php if (isset($ujian['durasi_per_soal']) && $ujian['durasi_per_soal'] > 0): ?>
+        let perSoalTimeLeft = <?= (int)$ujian['durasi_per_soal'] ?>;
+        const perSoalTimerDisplay = document.getElementById('perSoalTimerDisplay');
+        const perSoalTimerBadge = document.getElementById('perSoalTimerBadge');
+
+        function updatePerSoalTimer() {
+            if (!perSoalTimerDisplay) return;
+            perSoalTimeLeft--;
+            if (perSoalTimeLeft < 0) perSoalTimeLeft = 0;
+            const m = Math.floor(perSoalTimeLeft / 60);
+            const s = perSoalTimeLeft % 60;
+            perSoalTimerDisplay.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+            if (perSoalTimeLeft <= 10) {
+                perSoalTimerDisplay.style.color = '#dc3545';
+                perSoalTimerDisplay.style.fontWeight = 'bold';
+            }
+            if (perSoalTimeLeft <= 0) {
+                perSoalTimeLeft = 0;
+                nextPage();
+            }
+        }
+
+        function resetPerSoalTimer() {
+            perSoalTimeLeft = <?= (int)$ujian['durasi_per_soal'] ?>;
+            if (perSoalTimerDisplay) {
+                perSoalTimerDisplay.style.color = '';
+                perSoalTimerDisplay.style.fontWeight = '';
+            }
+        }
+
+        setInterval(updatePerSoalTimer, 1000);
         <?php endif; ?>
         
         init();

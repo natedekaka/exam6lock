@@ -1,5 +1,8 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/init_sekolah.php';
+
+$sekolah = getKonfigurasiSekolah($conn);
 
 if (!isset($_GET['ujian']) || empty($_GET['ujian'])) {
     die("Parameter tidak valid");
@@ -57,7 +60,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
   xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
   xmlns:html="http://www.w3.org/TR/REC-html40">
   <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
-   <Author>SMA Negeri 6 Cimahi</Author>
+   <Author>'.htmlspecialchars($sekolah['nama_sekolah']).'</Author>
    <Title>'.htmlspecialchars($ujian['judul_ujian']).'</Title>
    <Subject>Rekap Nilai Ujian</Subject>
    <Created>'.date('Y-m-d\TH:i:s\Z').'</Created>

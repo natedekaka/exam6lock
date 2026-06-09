@@ -19,32 +19,6 @@ if (!isset($_SESSION['admin_id'])) {
 require_once '../config/database.php';
 require_once '../config/init_sekolah.php';
 
-function fetchAllPrepared($conn, $sql, $params, $types) {
-    $stmt = $conn->prepare($sql);
-    if ($params) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_all(MYSQLI_ASSOC);
-    $result->free();
-    $stmt->close();
-    return $data;
-}
-
-function fetchRowPrepared($conn, $sql, $params, $types) {
-    $stmt = $conn->prepare($sql);
-    if ($params) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $result->free();
-    $stmt->close();
-    return $row;
-}
-
 $sekolah = getKonfigurasiSekolah($conn);
 
 $selected_ujian = isset($_GET['ujian']) ? (int)$_GET['ujian'] : 0;
@@ -85,7 +59,7 @@ if ($selected_ujian > 0) {
         FROM hasil_ujian 
         WHERE id_ujian = ?
     ";
-    $stats = fetchRowPrepared($conn, $sql, [$selected_ujian], "i");
+    $stats = $db->fetchRow( $sql, [$selected_ujian], "i");
     
     $analytics['total_peserta'] = $stats['total'];
     $analytics['avg_score'] = round($stats['avg_score'], 1);
@@ -96,7 +70,7 @@ if ($selected_ujian > 0) {
         FROM exam_violations 
         WHERE id_ujian = ?
     ";
-    $violation_stats = fetchRowPrepared($conn, $sql, [$selected_ujian], "i");
+    $violation_stats = $db->fetchRow( $sql, [$selected_ujian], "i");
     
     $analytics['total_violations'] = $violation_stats['total_violations'];
     
@@ -116,7 +90,7 @@ if ($selected_ujian > 0) {
         GROUP BY grade
         ORDER BY grade
     ";
-    $result = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $result = $db->fetchAll( $sql, [$selected_ujian], "i");
     foreach ($result as $row) {
         $analytics['grade_distribution'][$row['grade']] = $row['count'];
     }
@@ -136,7 +110,7 @@ if ($selected_ujian > 0) {
         GROUP BY score_range
         ORDER BY score_range
     ";
-    $result = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $result = $db->fetchAll( $sql, [$selected_ujian], "i");
     foreach ($result as $row) {
         $analytics['score_ranges'][$row['score_range']] = $row['count'];
     }
@@ -150,7 +124,7 @@ if ($selected_ujian > 0) {
         GROUP BY HOUR(created_at)
         ORDER BY hour
     ";
-    $result = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $result = $db->fetchAll( $sql, [$selected_ujian], "i");
     $violations_by_hour = [];
     for ($i = 0; $i < 24; $i++) {
         $violations_by_hour[$i] = 0;
@@ -169,7 +143,7 @@ if ($selected_ujian > 0) {
         GROUP BY HOUR(waktu_submit)
         ORDER BY hour
     ";
-    $result = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $result = $db->fetchAll( $sql, [$selected_ujian], "i");
     $submission_by_hour = [];
     for ($i = 0; $i < 24; $i++) {
         $submission_by_hour[$i] = 0;
@@ -188,7 +162,7 @@ if ($selected_ujian > 0) {
         ORDER BY waktu_submit DESC
         LIMIT 10
     ";
-    $analytics['recent_submissions'] = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $analytics['recent_submissions'] = $db->fetchAll( $sql, [$selected_ujian], "i");
     
     // Top scorers
     $sql = "
@@ -198,7 +172,7 @@ if ($selected_ujian > 0) {
         ORDER BY total_skor DESC
         LIMIT 5
     ";
-    $analytics['top_scorers'] = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $analytics['top_scorers'] = $db->fetchAll( $sql, [$selected_ujian], "i");
     
     // Students needing remedial
     $sql = "
@@ -207,7 +181,7 @@ if ($selected_ujian > 0) {
         WHERE h.id_ujian = ? AND h.total_skor < ?
         ORDER BY h.total_skor ASC
     ";
-    $analytics['needs_remedi_list'] = fetchAllPrepared($conn, $sql, [$selected_ujian, $kkm], "ii");
+    $analytics['needs_remedi_list'] = $db->fetchAll( $sql, [$selected_ujian, $kkm], "ii");
     $analytics['needs_remedi'] = count($analytics['needs_remedi_list']);
     
     // Class-wise performance breakdown
@@ -224,7 +198,7 @@ if ($selected_ujian > 0) {
         GROUP BY kelas
         ORDER BY kelas
     ";
-    $result = fetchAllPrepared($conn, $sql, [$kkm, $selected_ujian], "ii");
+    $result = $db->fetchAll( $sql, [$kkm, $selected_ujian], "ii");
     $class_stats = [];
     foreach ($result as $row) {
         $row['pass_rate'] = $row['total_students'] > 0 ? round(($row['passed'] / $row['total_students']) * 100, 1) : 0;
@@ -235,7 +209,7 @@ if ($selected_ujian > 0) {
     
     // Get list of students who already have remedial permission
     $sql = "SELECT nis FROM izin_remedi WHERE id_ujian = ?";
-    $result = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $result = $db->fetchAll( $sql, [$selected_ujian], "i");
     $remedi_given = [];
     foreach ($result as $row) {
         $remedi_given[] = $row['nis'];
@@ -248,14 +222,14 @@ if ($selected_ujian > 0) {
     // Get all soal for this ujian
     $sql = "SELECT id, pertanyaan, kunci_jawaban FROM soal WHERE id_ujian = ?";
     $soal_data = [];
-    $result = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $result = $db->fetchAll( $sql, [$selected_ujian], "i");
     foreach ($result as $row) {
         $soal_data[$row['id']] = $row;
     }
     
     // Get all hasil_ujian with detail_jawaban
     $sql = "SELECT detail_jawaban FROM hasil_ujian WHERE id_ujian = ? AND detail_jawaban IS NOT NULL";
-    $result = fetchAllPrepared($conn, $sql, [$selected_ujian], "i");
+    $result = $db->fetchAll( $sql, [$selected_ujian], "i");
     
     foreach ($result as $row) {
         $detail = json_decode($row['detail_jawaban'], true);
@@ -306,14 +280,14 @@ if ($selected_ujian > 0) {
         FROM hasil_ujian h
         WHERE h.id_ujian = ?
     ";
-    $completion = fetchRowPrepared($conn, $sql, [$selected_ujian, $selected_ujian], "ii");
+    $completion = $db->fetchRow( $sql, [$selected_ujian, $selected_ujian], "ii");
     
     $analytics['completion_rate'] = $stats['total'] > 0 ? round(($completion['completed'] / $stats['total']) * 100, 1) : 0;
 }
 
 $ujian_judul = '';
 $sql = "SELECT judul_ujian FROM ujian WHERE id = ?";
-$ujian_data = fetchRowPrepared($conn, $sql, [$selected_ujian], "i");
+$ujian_data = $db->fetchRow( $sql, [$selected_ujian], "i");
 if ($ujian_data) {
     $ujian_judul = $ujian_data['judul_ujian'];
 }
@@ -768,7 +742,11 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel' && $selected_ujian > 0
             <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
             <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
             <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
+            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
             <?php endif; ?>
+            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
+            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
+            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
             <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
         </div>
     </div>

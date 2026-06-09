@@ -58,4 +58,49 @@ class DBHelper {
         }
         return $stmt->execute();
     }
+
+    public function fetchAll($sql, $params = [], $types = '') {
+        $stmt = $this->conn->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
+    }
+
+    public function fetchRow($sql, $params = [], $types = '') {
+        $stmt = $this->conn->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+        return $row;
+    }
+
+    public function execute($sql, $params = [], $types = '') {
+        $stmt = $this->conn->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $result = $stmt->execute();
+        $insert_id = $stmt->insert_id;
+        $stmt->close();
+        return $insert_id ?: $result;
+    }
+
+    public function logAudit($admin_id, $admin_username, $aksi, $entitas, $entitas_id = null, $detail = null) {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $sql = "INSERT INTO audit_log (admin_id, admin_username, aksi, entitas, entitas_id, detail, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("isssiss", $admin_id, $admin_username, $aksi, $entitas, $entitas_id, $detail, $ip);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
+    }
 }

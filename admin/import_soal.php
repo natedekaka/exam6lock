@@ -269,6 +269,9 @@ if (isset($_SESSION['import_message'])) {
             <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
             <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
             <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
+            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
+            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
+            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
             <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
         </div>
     </div>
@@ -359,7 +362,7 @@ pertanyaan,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,kunci_jawaban,poin,kategori,timer_
         </div>
     </div>
 
-    <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
     <script>
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');

@@ -1,6 +1,10 @@
 <?php
 // riwayat.php - Halaman Riwayat Nilai Siswa
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once 'config/database.php';
 require_once 'config/init_sekolah.php';
 

@@ -337,7 +337,11 @@ $sekolah = getKonfigurasiSekolah($conn);
             <a href="profil_sekolah.php" class="active"><i class="bi bi-building"></i> Profil Sekolah</a>
             <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
             <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
+            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
             <?php endif; ?>
+            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
+            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
+            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
             <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
         </div>
     </div>
@@ -437,7 +441,7 @@ $sekolah = getKonfigurasiSekolah($conn);
         </div>
     </div>
 
-    <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
     <script>
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');

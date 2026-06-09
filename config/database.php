@@ -19,4 +19,7 @@ $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
 
 require_once __DIR__ . '/db_helper.php';
 $db = new DBHelper($conn);
+
+require_once __DIR__ . '/redis_helper.php';
+$redis = new RedisHelper();
 ?>

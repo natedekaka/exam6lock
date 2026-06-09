@@ -38,8 +38,21 @@ function getKonfigurasiSekolah($conn) {
         return $konfigurasi_cache;
     }
     
+    if (isset($GLOBALS['redis'])) {
+        $cached = $GLOBALS['redis']->get('sekolah:config');
+        if ($cached !== null) {
+            $konfigurasi_cache = $cached;
+            return $konfigurasi_cache;
+        }
+    }
+    
     $result = $conn->query("SELECT * FROM konfigurasi_sekolah LIMIT 1");
     $konfigurasi_cache = $result->fetch_assoc();
+    
+    if (isset($GLOBALS['redis'])) {
+        $GLOBALS['redis']->set('sekolah:config', $konfigurasi_cache, 3600);
+    }
+    
     return $konfigurasi_cache;
 }
 
@@ -52,6 +65,10 @@ function updateKonfigurasiSekolah($conn, $nama_sekolah, $logo, $warna_primer, $w
     $stmt->close();
     
     $konfigurasi_cache = null;
+    
+    if (isset($GLOBALS['redis'])) {
+        $GLOBALS['redis']->delete('sekolah:config');
+    }
     
     return $result;
 }
@@ -69,9 +86,13 @@ function initConcurrencyControl($conn) {
         $conn->query("ALTER TABLE soal ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
     }
     
-    $table_check = $conn->query("SHOW TABLES LIKE 'jawaban_sEMENTARA'");
+    $table_check = $conn->query("SHOW TABLES LIKE 'jawaban_sementara'");
     if ($table_check->num_rows === 0) {
-        $conn->query("CREATE TABLE IF NOT EXISTS `jawaban_sEMENTARA` (
+        $table_check_old = $conn->query("SHOW TABLES LIKE 'jawaban_sEMENTARA'");
+        if ($table_check_old->num_rows > 0) {
+            $conn->query("RENAME TABLE `jawaban_sEMENTARA` TO `jawaban_sementara`");
+        }
+        $conn->query("CREATE TABLE IF NOT EXISTS `jawaban_sementara` (
             `id` int NOT NULL AUTO_INCREMENT,
             `id_ujian` int NOT NULL,
             `nis` varchar(50) NOT NULL,
@@ -87,6 +108,22 @@ function initConcurrencyControl($conn) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
     }
     
+    // Add remember_token column to admin_users if not exists
+    $col_check = $conn->query("SHOW COLUMNS FROM admin_users LIKE 'remember_token'");
+    if ($col_check->num_rows === 0) {
+        $conn->query("ALTER TABLE admin_users ADD COLUMN remember_token VARCHAR(128) DEFAULT NULL AFTER password");
+        $conn->query("ALTER TABLE admin_users ADD INDEX idx_remember_token (remember_token)");
+    }
+    
+    $siswa_table = $conn->query("SHOW TABLES LIKE 'siswa'");
+    if ($siswa_table && $siswa_table->num_rows > 0) {
+        $col_siswa = $conn->query("SHOW COLUMNS FROM siswa LIKE 'remember_token'");
+        if ($col_siswa && $col_siswa->num_rows === 0) {
+            $conn->query("ALTER TABLE siswa ADD COLUMN remember_token VARCHAR(128) DEFAULT NULL AFTER foto");
+            $conn->query("ALTER TABLE siswa ADD INDEX idx_siswa_remember_token (remember_token)");
+        }
+    }
+
     $table_check = $conn->query("SHOW TABLES LIKE 'exam_violations'");
     if ($table_check->num_rows === 0) {
         $conn->query("CREATE TABLE IF NOT EXISTS `exam_violations` (

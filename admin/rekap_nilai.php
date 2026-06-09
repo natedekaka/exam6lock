@@ -606,7 +606,11 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
             <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
             <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
             <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
+            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
             <?php endif; ?>
+            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
+            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
+            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
             <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
         </div>
     </div>
@@ -797,6 +801,7 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
                                 <th class="text-center" style="width: 80px;">Skor Akhir</th>
                                 <th class="text-center" style="width: 80px;">Potongan</th>
                                 <th class="text-center" style="width: 140px;">Waktu Submit</th>
+                                <th class="text-center" style="width: 80px;">Remedial</th>
                                 <th class="text-center" style="width: 70px;">Aksi</th>
                             </tr>
                         </thead>
@@ -804,6 +809,11 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
                             <?php 
                             $no = 1;
                             foreach ($hasil_list as $hasil): 
+                            $stmt_re = $conn->prepare("SELECT id, approved_at FROM izin_remedi WHERE id_ujian=? AND nis=?");
+                            $stmt_re->bind_param("is", $hasil['id_ujian'], $hasil['nis']);
+                            $stmt_re->execute();
+                            $remedi_data = $stmt_re->get_result()->fetch_assoc();
+                            $stmt_re->close();
                             ?>
                             <tr>
                                 <td class="text-center">
@@ -849,6 +859,17 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
                                 <td class="text-center text-muted">
                                     <?php if (!empty($hasil['waktu_submit'])): ?>
                                         <?= date('d/m/Y H:i', strtotime($hasil['waktu_submit'])) ?>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($remedi_data): ?>
+                                        <?php if ($remedi_data['approved_at']): ?>
+                                            <span class="badge bg-success" title="Disetujui">Remedi</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark" title="Menunggu persetujuan">Pending</span>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span class="text-muted">-</span>
                                     <?php endif; ?>
@@ -917,7 +938,7 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
         <?php endif; ?>
     </div>
 
-    <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
     <script>
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('show');

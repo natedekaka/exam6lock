@@ -16,3 +16,12 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Ignore Sisyphus workspace
+.sisyphus/
+
+# Ignore backup zip files (sql files are tracked)
+backup_db/*.zip
+
+# Ignore log files
+*.log

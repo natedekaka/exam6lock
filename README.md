@@ -124,7 +124,7 @@ Aplikasi ujian online berbasis PHP dan MySQL untuk sekolah dengan fitur keamanan
 ## Struktur Direktori
 
 ```
-exam6/
+exam6lock/
 ├── admin/                      # Panel admin
 │   ├── index.php              # Dashboard admin
 │   ├── login.php              # Login admin
@@ -179,11 +179,11 @@ Tidak perlu install PHP, MySQL, atau Apache. Cukup jalankan 3 perintah.
 #### Langkah 1: Clone atau Download
 
 ```bash
-git clone https://github.com/natedekaka/exam6.git
-cd exam6
+git clone https://github.com/natedekaka/exam6lock.git
+cd exam6lock
 ```
 
-Atau download ZIP dari https://github.com/natedekaka/exam6, ekstrak, lalu buka terminal di folder `exam6`.
+Atau download ZIP dari https://github.com/natedekaka/exam6lock, ekstrak, lalu buka terminal di folder `exam6lock`.
 
 #### Langkah 2: Jalankan Aplikasi
 
@@ -241,9 +241,9 @@ Untuk yang sudah punya web server sendiri.
 
 | OS | Folder |
 |----|--------|
-| **Windows (XAMPP)** | `C:\xampp\htdocs\exam6` |
-| **Windows (Laragon)** | `C:\laragon\www\exam6` |
-| **Linux (LAMP)** | `/var/www/html/exam6` |
+| **Windows (XAMPP)** | `C:\xampp\htdocs\exam6lock` |
+| **Windows (Laragon)** | `C:\laragon\www\exam6lock` |
+| **Linux (LAMP)** | `/var/www/html/exam6lock` |
 
 Bisa dengan git clone atau download ZIP dan ekstrak ke folder di atas.
 
@@ -289,16 +289,16 @@ $port = '3306';
 
 **Linux/Mac:**
 ```bash
-chmod -R 777 exam6/uploads/
+chmod -R 777 exam6lock/uploads/
 ```
 
 **Windows:** Tidak perlu setting apa-apa.
 
 #### Langkah 5: Akses Aplikasi
 
-Buka browser: **http://localhost/exam6**
+Buka browser: **http://localhost/exam6lock**
 
-Login admin: http://localhost/exam6/admin/login.php → `admin` / `admin123`
+Login admin: http://localhost/exam6lock/admin/login.php → `admin` / `admin123`
 
 ---
 
@@ -309,7 +309,7 @@ Buat yang lebih suka terminal:
 #### Via Podman (langsung ke container MySQL — paling cepat)
 ```bash
 # Import database langsung ke container (beberapa detik, tidak lewat browser)
-podman exec -i exam6-db mysql -uroot -prootpass ujian_online < backup_db/ujian_online.sql
+podman exec -i exam6lock-db mysql -uroot -prootpass ujian_online < backup_db/ujian_online.sql
 ```
 
 > ⚠️ Kalau error `Warning` di baris pertama SQL, buka file `backup_db/ujian_online.sql` dan hapus baris pertama yang diawali `mysqldump: [Warning]`.
@@ -337,10 +337,10 @@ EXIT;
 **Atau satu baris:**
 ```bash
 # XAMPP (Windows):
-"C:\xampp\mysql\bin\mysql.exe" -u root ujian_online < "C:\xampp\htdocs\exam6\backup_db\ujian_online.sql"
+"C:\xampp\mysql\bin\mysql.exe" -u root ujian_online < "C:\xampp\htdocs\exam6lock\backup_db\ujian_online.sql"
 
 # Linux/Mac:
-mysql -u root -p ujian_online < /var/www/html/exam6/backup_db/ujian_online.sql
+mysql -u root -p ujian_online < /var/www/html/exam6lock/backup_db/ujian_online.sql
 ```
 
 ---
@@ -349,7 +349,7 @@ mysql -u root -p ujian_online < /var/www/html/exam6/backup_db/ujian_online.sql
 
 Setelah semua langkah di atas:
 
-1. **Buka** http://localhost:8024 (Podman) atau http://localhost/exam6 (Manual)
+1. **Buka** http://localhost:8024 (Podman) atau http://localhost/exam6lock (Manual)
 2. **Login admin**: http://localhost:8024/admin/login.php — `admin` / `admin123`
 3. Di dashboard, klik **"Manajemen Ujian"** — seharusnya sudah ada ujian contoh
 4. Klik **"Soal"** pada salah satu ujian — seharusnya sudah ada soal
@@ -602,7 +602,7 @@ Device Fingerprint: Aktif
   // XAMPP: password kosong, host localhost
   // Podman: host = db, password = rootpass
   ```
-- Untuk Podman: pastikan container `exam6-db` sudah running (`podman ps`)
+- Untuk Podman: pastikan container `exam6lock-db` sudah running (`podman ps`)
 - Coba akses phpMyAdmin untuk pastikan database `ujian_online` ada dan berisi tabel
 
 ### 2. Error "Table 'ujian_online.ujian' doesn't exist" atau tabel tidak ditemukan
@@ -626,8 +626,8 @@ Device Fingerprint: Aktif
 ### 6. Container tidak bisa start
 ```bash
 # Cek logs
-podman logs exam6-app
-podman logs exam6-db
+podman logs exam6lock-app
+podman logs exam6lock-db
 
 # Restart containers
 podman compose down
@@ -667,8 +667,8 @@ Kontribusi selalu diterima! Silakan:
 
 ## Kontak & Support
 
-- **Repository**: https://github.com/natedekaka/exam6
-- **Issues**: https://github.com/natedekaka/exam6/issues
+- **Repository**: https://github.com/natedekaka/exam6lock
+- **Issues**: https://github.com/natedekaka/exam6lock/issues
 - **Email**: natedekaka@gmail.com
 
 ---

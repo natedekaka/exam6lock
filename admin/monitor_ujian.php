@@ -9,6 +9,7 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once '../config/database.php';
 require_once '../config/init_sekolah.php';
+require_once '../config/audit_helper.php';
 $id_ujian_terpilih = isset($_GET['id_ujian']) ? (int)$_GET['id_ujian'] : (isset($_POST['id_ujian']) ? (int)$_POST['id_ujian'] : 0);
 
 // Handle delete violations
@@ -18,6 +19,7 @@ if (isset($_POST['delete_violation']) && $id_ujian_terpilih > 0) {
     $stmt->bind_param("ii", $delId, $id_ujian_terpilih);
     $stmt->execute();
     $stmt->close();
+    logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'VIOLATION', $delId, 'Hapus pelanggaran ID: ' . $delId . ' pada ujian ID: ' . $id_ujian_terpilih);
     header("Location: monitor_ujian.php?id_ujian=$id_ujian_terpilih");
     exit;
 }
@@ -33,6 +35,7 @@ if (isset($_POST['delete_selected']) && $id_ujian_terpilih > 0 && !empty($_POST[
         $stmt->execute();
         $stmt->close();
     }
+    logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'VIOLATION', 0, 'Hapus ' . count($ids) . ' pelanggaran terpilih pada ujian ID: ' . $id_ujian_terpilih);
     header("Location: monitor_ujian.php?id_ujian=$id_ujian_terpilih");
     exit;
 }
@@ -42,6 +45,7 @@ if (isset($_POST['delete_all']) && $id_ujian_terpilih > 0) {
     $stmt->bind_param("i", $id_ujian_terpilih);
     $stmt->execute();
     $stmt->close();
+    logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'VIOLATION', 0, 'Hapus semua pelanggaran pada ujian ID: ' . $id_ujian_terpilih);
     header("Location: monitor_ujian.php?id_ujian=$id_ujian_terpilih");
     exit;
 }
@@ -57,6 +61,7 @@ if (isset($_POST['delete_student']) && $id_ujian_terpilih > 0) {
         $stmt2->bind_param("is", $id_ujian_terpilih, $delNis);
         $stmt2->execute();
         $stmt2->close();
+        logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'SISWA', $id_ujian_terpilih, 'Hapus siswa NIS: ' . $delNis . ' dari ujian ID: ' . $id_ujian_terpilih);
         header("Location: monitor_ujian.php?id_ujian=$id_ujian_terpilih&student_deleted=1");
         exit;
     }
@@ -78,6 +83,7 @@ if (isset($_POST['delete_selected_students']) && $id_ujian_terpilih > 0 && !empt
             $stmt2->execute();
             $stmt2->close();
         }
+        logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'SISWA', $id_ujian_terpilih, 'Hapus ' . count($nis_list) . ' siswa terpilih dari ujian ID: ' . $id_ujian_terpilih);
         header("Location: monitor_ujian.php?id_ujian=$id_ujian_terpilih&students_deleted=" . count($nis_list));
         exit;
     }
@@ -95,6 +101,7 @@ if (isset($_POST['delete_all_students']) && $id_ujian_terpilih > 0) {
     $stmt2->execute();
     $stmt2->close();
     
+    logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'SISWA', $id_ujian_terpilih, 'Hapus semua siswa dari ujian ID: ' . $id_ujian_terpilih);
     header("Location: monitor_ujian.php?id_ujian=$id_ujian_terpilih&all_students_deleted=1");
     exit;
 }
@@ -107,6 +114,7 @@ if (isset($_POST['reset_student']) && $id_ujian_terpilih > 0) {
     $stmt = $conn->prepare("DELETE FROM hasil_ujian WHERE id_ujian = ? AND nis = ?");
     $stmt->bind_param("is", $id_ujian_terpilih, $resetNis);
     if ($stmt->execute()) {
+        logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'RESET', 'SISWA', $id_ujian_terpilih, 'Reset ujian siswa NIS: ' . $resetNis . ' pada ujian ID: ' . $id_ujian_terpilih);
         // Note: we do NOT delete from jawaban_sementara so student can continue
         header("Location: monitor_ujian.php?id_ujian=$id_ujian_terpilih&student_reset=1");
         exit;
@@ -139,15 +147,15 @@ if ($id_ujian_terpilih > 0) {
     $total_soal = $result->fetch_assoc()['total_soal'] ?? 0;
     $stmt->close();
     
-    // Check if jawaban_sEMENTARA has ip_address column
-    $hasIp = $conn->query("SHOW COLUMNS FROM jawaban_sEMENTARA LIKE 'ip_address'");
+    // Check if jawaban_sementara has ip_address column
+    $hasIp = $conn->query("SHOW COLUMNS FROM jawaban_sementara LIKE 'ip_address'");
     $hasIpCol = ($hasIp && $hasIp->num_rows > 0);
     
-    // Ambil data dari jawaban_sEMENTARA (sedang ujian)
+    // Ambil data dari jawaban_sementara (sedang ujian)
     if ($hasIpCol) {
-        $stmt = $conn->prepare("SELECT nis, nama, kelas, answers, updated_at, ip_address, device_fingerprint FROM jawaban_sEMENTARA WHERE id_ujian = ?");
+        $stmt = $conn->prepare("SELECT nis, nama, kelas, answers, updated_at, ip_address, device_fingerprint FROM jawaban_sementara WHERE id_ujian = ?");
     } else {
-        $stmt = $conn->prepare("SELECT nis, nama, kelas, answers, updated_at FROM jawaban_sEMENTARA WHERE id_ujian = ?");
+        $stmt = $conn->prepare("SELECT nis, nama, kelas, answers, updated_at FROM jawaban_sementara WHERE id_ujian = ?");
     }
     $stmt->bind_param("i", $id_ujian_terpilih);
     $stmt->execute();
@@ -312,7 +320,11 @@ foreach ($violation_data as $v) {
                 <a href="monitor_ujian.php" class="active"><i class="bi bi-display"></i> Monitor Ujian</a>
                 <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
                 <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
+                <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
                 <?php endif; ?>
+            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
+            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
+            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
                 <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
             </div>
         </div>
@@ -557,7 +569,7 @@ foreach ($violation_data as $v) {
         </div>
     </div>
     
-    <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
     <script>
         // Search violations table
         function filterViolations() {

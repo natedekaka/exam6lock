@@ -13,80 +13,60 @@ if (!isset($_SESSION['admin_id'])) {
 
 require_once '../config/database.php';
 require_once '../config/init_sekolah.php';
+require_once '../config/audit_helper.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
 $message = '';
 $message_type = '';
 
-// Cek kolom baru dengan cara aman
-$has_new_columns = false;
-$has_tampilkan_skor = false;
-$has_acak_opsi = false;
-$has_kode_ujian = false;
-$has_allow_ip = false;
-$has_browser_lock = false;
-$has_device_check = false;
-$has_timer_per_soal = false;
-$has_show_timer_per_soal = false;
+// Cek kolom ujian — single query, array-driven
+$column_flags = [
+    'acak_soal'            => 'new_columns',
+    'tampilkan_skor'       => 'tampilkan_skor',
+    'acak_opsi'            => 'acak_opsi',
+    'tampilkan_review'     => 'tampilkan_review',
+    'kode_ujian'           => 'kode_ujian',
+    'allow_ip'             => 'allow_ip',
+    'enable_browser_lock'  => 'browser_lock',
+    'enable_device_check'  => 'device_check',
+    'timer_per_soal'       => 'timer_per_soal',
+    'show_timer_per_soal'  => 'show_timer_per_soal',
+    'tanggal_mulai'        => 'tanggal_mulai',
+    'tanggal_selesai'      => 'tanggal_selesai',
+    'tampil_hasil_langsung'=> 'tampil_hasil_langsung',
+    'durasi_per_soal'      => 'durasi_per_soal',
+];
+$has = array_fill_keys(array_unique(array_values($column_flags)), false);
 try {
-    $result_cols = $conn->query("SHOW COLUMNS FROM ujian LIKE 'acak_soal'");
-    if ($result_cols && $result_cols->num_rows > 0) {
-        $row = $result_cols->fetch_assoc();
-        $result_cols->free();
-        $col_type = strtolower($row['Type'] ?? '');
-        if (strpos($col_type, 'varchar') !== false || strpos($col_type, 'enum') !== false) {
-            $has_new_columns = true;
+    $existing = $conn->query("SHOW COLUMNS FROM ujian");
+    if ($existing) {
+        $col_names = [];
+        while ($c = $existing->fetch_assoc()) $col_names[] = $c['Field'];
+        $existing->free();
+        foreach ($column_flags as $col => $flag) {
+            if (in_array($col, $col_names)) {
+                $has[$flag] = true;
+            }
         }
     }
-    $result_cols2 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'tampilkan_skor'");
-    if ($result_cols2 && $result_cols2->num_rows > 0) {
-        $has_tampilkan_skor = true;
-    }
-    $result_cols3 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'acak_opsi'");
-    if ($result_cols3 && $result_cols3->num_rows > 0) {
-        $has_acak_opsi = true;
-    }
-    $result_cols4 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'tampilkan_review'");
-    if ($result_cols4 && $result_cols4->num_rows > 0) {
-        $has_tampilkan_review = true;
-    }
-    $result_cols5 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'kode_ujian'");
-    if ($result_cols5 && $result_cols5->num_rows > 0) {
-        $has_kode_ujian = true;
-    }
-    $result_cols6 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'allow_ip'");
-    if ($result_cols6 && $result_cols6->num_rows > 0) {
-        $has_allow_ip = true;
-    }
-    $result_cols7 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'enable_browser_lock'");
-    if ($result_cols7 && $result_cols7->num_rows > 0) {
-        $has_browser_lock = true;
-    }
-    $result_cols8 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'enable_device_check'");
-    if ($result_cols8 && $result_cols8->num_rows > 0) {
-        $has_device_check = true;
-    }
-    $result_cols9 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'timer_per_soal'");
-    if ($result_cols9 && $result_cols9->num_rows > 0) {
-        $has_timer_per_soal = true;
-    }
-    $result_cols10 = $conn->query("SHOW COLUMNS FROM ujian LIKE 'show_timer_per_soal'");
-    if ($result_cols10 && $result_cols10->num_rows > 0) {
-        $has_show_timer_per_soal = true;
-    }
 } catch (Exception $e) {
-    $has_new_columns = false;
-    $has_tampilkan_skor = false;
-    $has_acak_opsi = false;
-    $has_tampilkan_review = false;
-    $has_kode_ujian = false;
-    $has_allow_ip = false;
-    $has_browser_lock = false;
-    $has_device_check = false;
-    $has_timer_per_soal = false;
-    $has_show_timer_per_soal = false;
+    // all remain false
 }
+$has_new_columns = $has['new_columns'];
+$has_tampilkan_skor = $has['tampilkan_skor'];
+$has_acak_opsi = $has['acak_opsi'];
+$has_tampilkan_review = $has['tampilkan_review'];
+$has_kode_ujian = $has['kode_ujian'];
+$has_allow_ip = $has['allow_ip'];
+$has_browser_lock = $has['browser_lock'];
+$has_device_check = $has['device_check'];
+$has_timer_per_soal = $has['timer_per_soal'];
+$has_show_timer_per_soal = $has['show_timer_per_soal'];
+$has_tanggal_mulai = $has['tanggal_mulai'];
+$has_tanggal_selesai = $has['tanggal_selesai'];
+$has_tampil_hasil_langsung = $has['tampil_hasil_langsung'];
+$has_durasi_per_soal = $has['durasi_per_soal'];
 
 if (isset($_GET['toggle']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
@@ -97,6 +77,7 @@ if (isset($_GET['toggle']) && isset($_GET['id'])) {
     if ($stmt->execute()) {
         $message = "Status ujian berhasil diubah!";
         $message_type = 'success';
+        if (isset($redis)) $redis->delete('ujian:list_aktif');
     }
     $stmt->close();
 }
@@ -128,6 +109,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_ujian'])) {
         $tampilkan_skor = $_POST['tampilkan_skor'];
     }
     
+    $tanggal_mulai = null;
+    if ($has_tanggal_mulai && isset($_POST['tanggal_mulai']) && !empty($_POST['tanggal_mulai'])) {
+        $tanggal_mulai = $_POST['tanggal_mulai'];
+    }
+    $tanggal_selesai = null;
+    if ($has_tanggal_selesai && isset($_POST['tanggal_selesai']) && !empty($_POST['tanggal_selesai'])) {
+        $tanggal_selesai = $_POST['tanggal_selesai'];
+    }
+    $tampil_hasil_langsung = 'ya';
+    if ($has_tampil_hasil_langsung && isset($_POST['tampil_hasil_langsung']) && ($_POST['tampil_hasil_langsung'] === 'ya' || $_POST['tampil_hasil_langsung'] === 'tidak')) {
+        $tampil_hasil_langsung = $_POST['tampil_hasil_langsung'];
+    }
+
+    $durasi_per_soal = 0;
+    if ($has_durasi_per_soal && isset($_POST['durasi_per_soal'])) {
+        $durasi_per_soal = max(0, min(3600, (int)$_POST['durasi_per_soal']));
+    }
+
+    $ujian_kelas_ids = isset($_POST['ujian_kelas']) ? $_POST['ujian_kelas'] : [];
+
     // New security fields
     $kode_ujian = '';
     if ($has_kode_ujian && isset($_POST['kode_ujian'])) {
@@ -173,6 +174,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_ujian'])) {
         $message = "Judul ujian wajib diisi!";
         $message_type = 'danger';
     } else {
+        // Build optional field list (same for INSERT and UPDATE)
+        $opt = [];
+        if ($has_new_columns) {
+            $opt[] = ['col' => 'waktu_tersedia', 'type' => 'i', 'val' => $waktu_tersedia];
+            $opt[] = ['col' => 'acak_soal',       'type' => 's', 'val' => $acak_soal];
+        }
+        if ($has_acak_opsi)           $opt[] = ['col' => 'acak_opsi',            'type' => 's', 'val' => $acak_opsi];
+        if ($has_tampilkan_skor)      $opt[] = ['col' => 'tampilkan_skor',       'type' => 's', 'val' => $tampilkan_skor];
+        if ($has_tampilkan_review)    $opt[] = ['col' => 'tampilkan_review',     'type' => 's', 'val' => $tampilkan_review];
+        if ($has_tanggal_mulai)       $opt[] = ['col' => 'tanggal_mulai',        'type' => 's', 'val' => $tanggal_mulai];
+        if ($has_tanggal_selesai)     $opt[] = ['col' => 'tanggal_selesai',      'type' => 's', 'val' => $tanggal_selesai];
+        if ($has_tampil_hasil_langsung) $opt[] = ['col' => 'tampil_hasil_langsung','type' => 's', 'val' => $tampil_hasil_langsung];
+        if ($has_kode_ujian)          $opt[] = ['col' => 'kode_ujian',           'type' => 's', 'val' => $kode_ujian];
+        if ($has_allow_ip)            $opt[] = ['col' => 'allow_ip',             'type' => 's', 'val' => $allow_ip];
+        if ($has_browser_lock) {
+            $opt[] = ['col' => 'enable_browser_lock', 'type' => 's', 'val' => $enable_browser_lock];
+            $opt[] = ['col' => 'max_violations',      'type' => 'i', 'val' => $max_violations];
+        }
+        if ($has_device_check)        $opt[] = ['col' => 'enable_device_check',  'type' => 's', 'val' => $enable_device_check];
+        if ($has_timer_per_soal)      $opt[] = ['col' => 'timer_per_soal',       'type' => 'i', 'val' => $timer_per_soal];
+        if ($has_show_timer_per_soal) $opt[] = ['col' => 'show_timer_per_soal',  'type' => 's', 'val' => $show_timer_per_soal];
+        if ($has_durasi_per_soal)     $opt[] = ['col' => 'durasi_per_soal',      'type' => 'i', 'val' => $durasi_per_soal];
+
         if ($edit_id > 0) {
             $stmt = $conn->prepare("SELECT updated_at FROM ujian WHERE id = ?");
             $stmt->bind_param("i", $edit_id);
@@ -180,155 +204,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_ujian'])) {
             $result = $stmt->get_result();
             $current_data = $result->fetch_assoc();
             $stmt->close();
-            
+
             if ($current_data && $original_updated !== $current_data['updated_at']) {
                 $message = "Data telah diubah oleh pengguna lain. Silakan refresh dan coba lagi.";
                 $message_type = 'danger';
             } else {
                 $fields = "judul_ujian = ?, deskripsi = ?, status = ?";
-                $params = [$judul, $deskripsi, $status];
                 $types = "sss";
-                
-                if ($has_new_columns) {
-                    $fields .= ", waktu_tersedia = ?, acak_soal = ?";
-                    $params[] = $waktu_tersedia;
-                    $params[] = $acak_soal;
-                    $types .= "is";
+                $params = [$judul, $deskripsi, $status];
+                foreach ($opt as $f) {
+                    $fields .= ", {$f['col']} = ?";
+                    $params[] = $f['val'];
+                    $types .= $f['type'];
                 }
-                if ($has_acak_opsi) {
-                    $fields .= ", acak_opsi = ?";
-                    $params[] = $acak_opsi;
-                    $types .= "s";
-                }
-                if ($has_tampilkan_skor) {
-                    $fields .= ", tampilkan_skor = ?";
-                    $params[] = $tampilkan_skor;
-                    $types .= "s";
-                }
-                if ($has_tampilkan_review) {
-                    $fields .= ", tampilkan_review = ?";
-                    $params[] = $tampilkan_review;
-                    $types .= "s";
-                }
-                
-                if ($has_kode_ujian) {
-                    $fields .= ", kode_ujian = ?";
-                    $params[] = $kode_ujian;
-                    $types .= "s";
-                }
-                if ($has_allow_ip) {
-                    $fields .= ", allow_ip = ?";
-                    $params[] = $allow_ip;
-                    $types .= "s";
-                }
-                if ($has_browser_lock) {
-                    $fields .= ", enable_browser_lock = ?, max_violations = ?";
-                    $params[] = $enable_browser_lock;
-                    $params[] = $max_violations;
-                    $types .= "si";
-                }
-                if ($has_device_check) {
-                    $fields .= ", enable_device_check = ?";
-                    $params[] = $enable_device_check;
-                    $types .= "s";
-                }
-                if ($has_timer_per_soal) {
-                    $fields .= ", timer_per_soal = ?";
-                    $params[] = $timer_per_soal;
-                    $types .= "i";
-                }
-                if ($has_show_timer_per_soal) {
-                    $fields .= ", show_timer_per_soal = ?";
-                    $params[] = $show_timer_per_soal;
-                    $types .= "s";
-                }
-                
                 $fields .= " WHERE id = ?";
                 $params[] = $edit_id;
                 $types .= "i";
-                
+
                 $stmt = $conn->prepare("UPDATE ujian SET $fields");
                 $stmt->bind_param($types, ...$params);
                 $message = "Ujian berhasil diperbarui!";
             }
         } else {
-            $fields = "judul_ujian, deskripsi, status";
-            $values = "?, ?, ?";
-            $params = [$judul, $deskripsi, $status];
+            $col_names = "judul_ujian, deskripsi, status";
+            $placeholders = "?, ?, ?";
             $types = "sss";
-            
-            if ($has_new_columns) {
-                $fields .= ", waktu_tersedia, acak_soal";
-                $values .= ", ?, ?";
-                $params[] = $waktu_tersedia;
-                $params[] = $acak_soal;
-                $types .= "is";
+            $params = [$judul, $deskripsi, $status];
+            foreach ($opt as $f) {
+                $col_names .= ", {$f['col']}";
+                $placeholders .= ", ?";
+                $params[] = $f['val'];
+                $types .= $f['type'];
             }
-            if ($has_acak_opsi) {
-                $fields .= ", acak_opsi";
-                $values .= ", ?";
-                $params[] = $acak_opsi;
-                $types .= "s";
-            }
-            if ($has_tampilkan_skor) {
-                $fields .= ", tampilkan_skor";
-                $values .= ", ?";
-                $params[] = $tampilkan_skor;
-                $types .= "s";
-            }
-            if ($has_tampilkan_review) {
-                $fields .= ", tampilkan_review";
-                $values .= ", ?";
-                $params[] = $tampilkan_review;
-                $types .= "s";
-            }
-            
-            if ($has_kode_ujian) {
-                $fields .= ", kode_ujian";
-                $values .= ", ?";
-                $params[] = $kode_ujian;
-                $types .= "s";
-            }
-            if ($has_allow_ip) {
-                $fields .= ", allow_ip";
-                $values .= ", ?";
-                $params[] = $allow_ip;
-                $types .= "s";
-            }
-            if ($has_browser_lock) {
-                $fields .= ", enable_browser_lock, max_violations";
-                $values .= ", ?, ?";
-                $params[] = $enable_browser_lock;
-                $params[] = $max_violations;
-                $types .= "si";
-            }
-            if ($has_device_check) {
-                $fields .= ", enable_device_check";
-                $values .= ", ?";
-                $params[] = $enable_device_check;
-                $types .= "s";
-            }
-            if ($has_timer_per_soal) {
-                $fields .= ", timer_per_soal";
-                $values .= ", ?";
-                $params[] = $timer_per_soal;
-                $types .= "i";
-            }
-            if ($has_show_timer_per_soal) {
-                $fields .= ", show_timer_per_soal";
-                $values .= ", ?";
-                $params[] = $show_timer_per_soal;
-                $types .= "s";
-            }
-            
-            $stmt = $conn->prepare("INSERT INTO ujian ($fields) VALUES ($values)");
+            $stmt = $conn->prepare("INSERT INTO ujian ($col_names) VALUES ($placeholders)");
             $stmt->bind_param($types, ...$params);
             $message = "Ujian berhasil ditambahkan!";
         }
-        
+
         if (empty($message_type)) {
             if ($stmt->execute()) {
                 $message_type = 'success';
+                if (isset($redis)) $redis->delete('ujian:list_aktif');
+
+                $ujian_id = $edit_id > 0 ? $edit_id : $stmt->insert_id;
+
+                if (!empty($ujian_kelas_ids)) {
+                    $conn->query("DELETE FROM ujian_kelas WHERE id_ujian = $ujian_id");
+                    $stmt_kelas = $conn->prepare("INSERT INTO ujian_kelas (id_ujian, id_kelas) VALUES (?, ?)");
+                    foreach ($ujian_kelas_ids as $id_kelas) {
+                        $id_kelas = (int)$id_kelas;
+                        if ($id_kelas > 0) {
+                            $stmt_kelas->bind_param("ii", $ujian_id, $id_kelas);
+                            $stmt_kelas->execute();
+                        }
+                    }
+                    $stmt_kelas->close();
+                }
+
+                if ($edit_id > 0) {
+                    logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'UPDATE', 'UJIAN', $edit_id, 'Mengupdate ujian: ' . $judul);
+                } else {
+                    logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'CREATE', 'UJIAN', $stmt->insert_id, 'Menambahkan ujian: ' . $judul);
+                }
             }
             $stmt->close();
         }
@@ -337,9 +274,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_ujian'])) {
 
 if (isset($_GET['hapus'])) {
     $id = (int)$_GET['hapus'];
+    $stmt = $conn->prepare("SELECT judul_ujian FROM ujian WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $h_result = $stmt->get_result();
+    $h_ujian = $h_result->fetch_assoc();
+    $stmt->close();
+    
+    logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'UJIAN', $id, 'Menghapus ujian: ' . ($h_ujian['judul_ujian'] ?? 'ID: ' . $id));
+    
     $stmt = $conn->prepare("DELETE FROM ujian WHERE id = ?");
     $stmt->bind_param("i", $id);
     if ($stmt->execute()) {
+        if (isset($redis)) $redis->delete('ujian:list_aktif');
         header('Location: index.php?deleted=1');
         exit;
     }
@@ -347,6 +294,14 @@ if (isset($_GET['hapus'])) {
 }
 
 $result = $conn->query("SELECT * FROM ujian ORDER BY tgl_dibuat DESC");
+
+$ujian_kelas_map = [];
+if ($has_tanggal_mulai || $has_tanggal_selesai) {
+    $uk_all = $conn->query("SELECT uk.id_ujian, k.nama_kelas FROM ujian_kelas uk JOIN kelas k ON uk.id_kelas = k.id");
+    while ($uk = $uk_all->fetch_assoc()) {
+        $ujian_kelas_map[$uk['id_ujian']][] = htmlspecialchars($uk['nama_kelas']);
+    }
+}
 
 $edit_ujian = null;
 if (isset($_GET['edit'])) {
@@ -784,13 +739,22 @@ if (isset($_GET['edit'])) {
         <div class="sidebar-menu">
             <a href="index.php" class="active"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
             <a href="tambah_soal.php"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
+            <a href="bank_soal.php"><i class="bi bi-database-fill"></i> Bank Soal Global</a>
             <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
             <a href="analytics.php"><i class="bi bi-graph-up"></i> Analytics</a>
             <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
             <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
+            <a href="kelola_kelas.php"><i class="bi bi-diagram-3-fill"></i> Kelola Kelas</a>
             <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
             <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
+            <a href="backup_restore.php"><i class="bi bi-cloud-arrow-up-fill"></i> Backup & Restore</a>
             <?php endif; ?>
+            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
+            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
+            <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
+            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
+            <?php endif; ?>
+            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
             <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
         </div>
     </div>
@@ -798,7 +762,7 @@ if (isset($_GET['edit'])) {
     <div class="main-content">
         <div class="container-fluid px-4">
         <div class="page-header animate-fade-in">
-            <h3><i class="bi bi-clipboard-data me-2"></i>Manajemen Ujian - SMA Negeri 6 Cimahi</h3>
+            <h3><i class="bi bi-clipboard-data me-2"></i>Manajemen Ujian - <?= htmlspecialchars($sekolah['nama_sekolah']) ?></h3>
             <span class="badge bg-primary fs-6"><?= $result->num_rows ?> ujian</span>
         </div>
         
@@ -904,8 +868,8 @@ if (isset($_GET['edit'])) {
                             <label class="form-label fw-semibold">Timer/Soal (dtk)</label>
                             <input type="number" name="timer_per_soal" class="form-control" 
                                    value="<?= $edit_ujian ? (int)($edit_ujian['timer_per_soal'] ?? 0) : 0 ?>"
-                                   placeholder="0 = tidak используется" min="0" max="3600">
-                            <small class="text-muted">0 = неактивно</small>
+                                   placeholder="0 = tidak aktif" min="0" max="3600">
+                            <small class="text-muted">0 = tidak aktif</small>
                         </div>
                         <div class="col-md-3 mb-3">
                             <label class="form-label fw-semibold">Tampil Timer</label>
@@ -974,7 +938,77 @@ if (isset($_GET['edit'])) {
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
+
+                    <?php if ($has_tanggal_mulai || $has_tanggal_selesai): ?>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="fw-bold text-primary"><i class="bi bi-calendar-event me-2"></i>Penjadwalan</h6>
+                        </div>
                     </div>
+                    <hr>
+                    <div class="row">
+                        <?php if ($has_tanggal_mulai): ?>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Tanggal Mulai</label>
+                            <input type="datetime-local" name="tanggal_mulai" class="form-control"
+                                   value="<?= $edit_ujian && !empty($edit_ujian['tanggal_mulai']) ? date('Y-m-d\TH:i', strtotime($edit_ujian['tanggal_mulai'])) : '' ?>">
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($has_tanggal_selesai): ?>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Tanggal Selesai</label>
+                            <input type="datetime-local" name="tanggal_selesai" class="form-control"
+                                   value="<?= $edit_ujian && !empty($edit_ujian['tanggal_selesai']) ? date('Y-m-d\TH:i', strtotime($edit_ujian['tanggal_selesai'])) : '' ?>">
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($has_tampil_hasil_langsung): ?>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Tampil Hasil</label>
+                            <select name="tampil_hasil_langsung" class="form-select">
+                                <option value="ya" <?= $edit_ujian && ($edit_ujian['tampil_hasil_langsung'] ?? 'ya') === 'ya' ? 'selected' : '' ?>>Ya</option>
+                                <option value="tidak" <?= $edit_ujian && ($edit_ujian['tampil_hasil_langsung'] ?? 'ya') === 'tidak' ? 'selected' : '' ?>>Tidak</option>
+                            </select>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($has_durasi_per_soal): ?>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Durasi/Soal (dtk)</label>
+                            <input type="number" name="durasi_per_soal" class="form-control"
+                                   value="<?= $edit_ujian ? (int)($edit_ujian['durasi_per_soal'] ?? 0) : 0 ?>"
+                                   placeholder="0" min="0" max="3600">
+                            <small class="text-muted">0 = gunakan durasi ujian</small>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php
+                    $kelas_all = $conn->query("SELECT * FROM kelas ORDER BY nama_kelas ASC");
+                    $ujian_kelas_selected = [];
+                    if ($edit_ujian) {
+                        $stmt_uk = $conn->prepare("SELECT id_kelas FROM ujian_kelas WHERE id_ujian = ?");
+                        $stmt_uk->bind_param("i", $edit_ujian['id']);
+                        $stmt_uk->execute();
+                        $uk_res = $stmt_uk->get_result();
+                        while ($uk = $uk_res->fetch_assoc()) {
+                            $ujian_kelas_selected[] = $uk['id_kelas'];
+                        }
+                        $stmt_uk->close();
+                    }
+                    ?>
+                    <?php if ($kelas_all && $kelas_all->num_rows > 0): ?>
+                    <div class="row mt-3">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-semibold">Batasi ke Kelas</label>
+                            <select name="ujian_kelas[]" class="form-select" multiple style="min-height: 120px;">
+                                <?php $kelas_all->data_seek(0); while ($kl = $kelas_all->fetch_assoc()): ?>
+                                <option value="<?= $kl['id'] ?>" <?= in_array($kl['id'], $ujian_kelas_selected) ? 'selected' : '' ?>><?= htmlspecialchars($kl['nama_kelas']) ?> <?= $kl['tingkat'] ? '(' . htmlspecialchars($kl['tingkat']) . ')' : '' ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                            <small class="text-muted">Kosongkan jika tidak ada batasan kelas (Ctrl+klik untuk multi-pilih)</small>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     
                     <div class="row">
                         <div class="col-md-12 mb-3">
@@ -1021,6 +1055,13 @@ if (isset($_GET['edit'])) {
                                 <th class="text-center">Skor</th>
                                 <?php endif; ?>
                                 <?php endif; ?>
+                                <?php if ($has_tanggal_mulai): ?>
+                                <th class="text-center">Mulai</th>
+                                <?php endif; ?>
+                                <?php if ($has_tanggal_selesai): ?>
+                                <th class="text-center">Selesai</th>
+                                <?php endif; ?>
+                                <th class="text-center">Kelas</th>
                                 <th class="text-center">Tgl</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
@@ -1080,6 +1121,31 @@ if (isset($_GET['edit'])) {
                                 </td>
                                 <?php endif; ?>
                                 <?php endif; ?>
+                                <?php if ($has_tanggal_mulai): ?>
+                                <td class="text-center">
+                                    <?php if (!empty($row['tanggal_mulai'])): ?>
+                                    <small class="text-muted"><?= date('d/m/Y H:i', strtotime($row['tanggal_mulai'])) ?></small>
+                                    <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <?php endif; ?>
+                                <?php if ($has_tanggal_selesai): ?>
+                                <td class="text-center">
+                                    <?php if (!empty($row['tanggal_selesai'])): ?>
+                                    <small class="text-muted"><?= date('d/m/Y H:i', strtotime($row['tanggal_selesai'])) ?></small>
+                                    <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <?php endif; ?>
+                                <td class="text-center">
+                                    <?php if (!empty($ujian_kelas_map[$row['id']])): ?>
+                                    <span class="badge bg-info" title="<?= implode(', ', $ujian_kelas_map[$row['id']]) ?>"><?= count($ujian_kelas_map[$row['id']]) ?> kelas</span>
+                                    <?php else: ?>
+                                    <span class="text-muted">Semua</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="text-center text-muted"><?= date('d/m/Y', strtotime($row['tgl_dibuat'])) ?></td>
                                 <td>
                                     <div class="dropdown">

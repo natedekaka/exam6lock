@@ -1,18 +1,90 @@
 <?php
 // index.php - Halaman Depan (List Ujian)
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once 'config/database.php';
 require_once 'config/init_sekolah.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
-$ujian_list = $conn->query("SELECT * FROM ujian WHERE status = 'aktif' ORDER BY tgl_dibuat DESC");
+
+$has_scheduling = $conn->query("SHOW COLUMNS FROM ujian LIKE 'tanggal_mulai'")->num_rows > 0;
+$has_ujian_kelas = $conn->query("SHOW TABLES LIKE 'ujian_kelas'")->num_rows > 0;
+$has_kelas_table = $conn->query("SHOW TABLES LIKE 'kelas'")->num_rows > 0;
 
 $ujian_ids = [];
 $ujian_array = [];
-while ($row = $ujian_list->fetch_assoc()) {
-    $ujian_ids[] = $row['id'];
-    $ujian_array[$row['id']] = $row;
+
+if (isset($redis)) {
+    $cached = $redis->get('ujian:list_aktif');
+    if ($cached !== null) {
+        $ujian_array = $cached;
+        $ujian_ids = array_keys($ujian_array);
+    }
 }
+
+if (empty($ujian_ids)) {
+    $ujian_list = $conn->query("SELECT * FROM ujian WHERE status = 'aktif' ORDER BY tgl_dibuat DESC");
+    while ($row = $ujian_list->fetch_assoc()) {
+        $ujian_ids[] = $row['id'];
+        $ujian_array[$row['id']] = $row;
+    }
+    if (isset($redis)) {
+        $redis->set('ujian:list_aktif', $ujian_array, 300);
+    }
+}
+
+$ujian_kelas_map = [];
+if ($has_ujian_kelas && !empty($ujian_ids)) {
+    $ids_ph = implode(',', array_fill(0, count($ujian_ids), '?'));
+    $stmt_uk = $conn->prepare("SELECT id_ujian, id_kelas FROM ujian_kelas WHERE id_ujian IN ($ids_ph)");
+    $stmt_uk->bind_param(str_repeat('i', count($ujian_ids)), ...$ujian_ids);
+    $stmt_uk->execute();
+    $uk_res = $stmt_uk->get_result();
+    while ($uk = $uk_res->fetch_assoc()) {
+        $ujian_kelas_map[$uk['id_ujian']][] = $uk['id_kelas'];
+    }
+    $stmt_uk->close();
+}
+
+$is_siswa_logged_in = isset($_SESSION['siswa_id']);
+$siswa_kelas = null;
+if ($is_siswa_logged_in) {
+    $siswa_kelas = $_SESSION['siswa_kelas'] ?? null;
+}
+
+$now = date('Y-m-d H:i:s');
+$filtered_ujian = [];
+foreach ($ujian_array as $id => $ujian) {
+    if ($has_scheduling && !empty($ujian['tanggal_mulai']) && $now < $ujian['tanggal_mulai']) {
+        continue;
+    }
+    if ($has_scheduling && !empty($ujian['tanggal_selesai']) && $now > $ujian['tanggal_selesai']) {
+        continue;
+    }
+    if ($has_ujian_kelas && !empty($ujian_kelas_map[$id])) {
+        if (!$is_siswa_logged_in) {
+            continue;
+        }
+        if ($has_kelas_table && $siswa_kelas) {
+            $stmt_sk = $conn->prepare("SELECT id FROM kelas WHERE nama_kelas = ?");
+            $stmt_sk->bind_param("s", $siswa_kelas);
+            $stmt_sk->execute();
+            $sk_res = $stmt_sk->get_result();
+            $sk_row = $sk_res->fetch_assoc();
+            $kelas_id = $sk_row ? $sk_row['id'] : null;
+            $stmt_sk->close();
+
+            if ($kelas_id && !in_array($kelas_id, $ujian_kelas_map[$id])) {
+                continue;
+            }
+        }
+    }
+    $filtered_ujian[$id] = $ujian;
+}
+$ujian_array = $filtered_ujian;
 
 $soal_counts = [];
 $waktu_counts = [];
@@ -47,7 +119,7 @@ if (!empty($ujian_ids)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sistem Ujian Online - SMA Negeri 6 Cimahi">
+    <meta name="description" content="Sistem Ujian Online - <?= htmlspecialchars($sekolah['nama_sekolah']) ?>">
     <title>Sistem Ujian Online</title>
     
     <link href="vendor/fonts/poppins.css" rel="stylesheet">
@@ -210,10 +282,58 @@ if (!empty($ujian_ids)) {
                         <i class="bi bi-clipboard-check me-2"></i>Sistem Ujian Online
                     </h1>
                     <p class="hero-subtitle">Selamat datang! Silakan pilih ujian yang tersedia di bawah ini untuk memulai.</p>
+                    <div class="mt-4">
+                        <?php if (isset($_SESSION['siswa_id'])): ?>
+                            <a href="siswa/profil.php" class="btn btn-light me-2">
+                                <i class="bi bi-person-circle me-2"></i><?= htmlspecialchars($_SESSION['siswa_nama']) ?>
+                            </a>
+                            <a href="siswa/logout.php" class="btn btn-outline-light">
+                                <i class="bi bi-box-arrow-right me-2"></i>Keluar
+                            </a>
+                        <?php else: ?>
+                            <a href="siswa/login.php" class="btn btn-light">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login Siswa
+                            </a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
+
+    <?php if ($is_siswa_logged_in): ?>
+    <?php
+    $siswa_kelas = $_SESSION['siswa_kelas'] ?? '';
+    $stmt_p = $conn->prepare("SELECT * FROM pengumuman WHERE tipe='umum' OR (tipe='kelas' AND (target_kelas IS NULL OR target_kelas='' OR target_kelas=?)) ORDER BY created_at DESC LIMIT 3");
+    $stmt_p->bind_param("s", $siswa_kelas);
+    $stmt_p->execute();
+    $pengumuman_list = $stmt_p->get_result();
+    $stmt_p->close();
+    ?>
+    <?php if ($pengumuman_list && $pengumuman_list->num_rows > 0): ?>
+    <section class="py-3">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold mb-0"><i class="bi bi-megaphone-fill me-2 text-primary"></i>Pengumuman</h5>
+                <a href="siswa/pengumuman.php" class="small">Lihat Semua <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <?php while ($p = $pengumuman_list->fetch_assoc()): ?>
+            <div class="card border-0 shadow-sm mb-2">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong><?= htmlspecialchars($p['judul']) ?></strong>
+                            <p class="mb-0 small text-muted"><?= htmlspecialchars(mb_substr($p['isi'], 0, 200)) ?><?= mb_strlen($p['isi']) > 200 ? '...' : '' ?></p>
+                        </div>
+                        <small class="text-muted ms-3 text-nowrap"><?= htmlspecialchars($p['created_at']) ?></small>
+                    </div>
+                </div>
+            </div>
+            <?php endwhile; ?>
+        </div>
+    </section>
+    <?php endif; ?>
+    <?php endif; ?>
 
     <!-- Ujian List -->
     <section class="py-5">
@@ -263,11 +383,29 @@ if (!empty($ujian_ids)) {
                             $waktu = $waktu_counts[$ujian['id']] ?? 0;
                             ?>
                             <?php if ($waktu > 0): ?>
-                            <div class="d-flex align-items-center mb-4 text-muted small">
+                            <div class="d-flex align-items-center mb-3 text-muted small">
                                 <div class="info-icon me-2" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
                                     <i class="bi bi-clock"></i>
                                 </div>
                                 <span><?= $waktu ?> menit</span>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($has_scheduling && !empty($ujian['tanggal_mulai'])): ?>
+                            <div class="d-flex align-items-center mb-3 text-muted small">
+                                <div class="info-icon me-2" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                                    <i class="bi bi-calendar-check"></i>
+                                </div>
+                                <span>Mulai: <?= date('d M Y H:i', strtotime($ujian['tanggal_mulai'])) ?></span>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($has_scheduling && !empty($ujian['tanggal_selesai'])): ?>
+                            <div class="d-flex align-items-center mb-3 text-muted small">
+                                <div class="info-icon me-2" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                                    <i class="bi bi-calendar-x"></i>
+                                </div>
+                                <span>Selesai: <?= date('d M Y H:i', strtotime($ujian['tanggal_selesai'])) ?></span>
                             </div>
                             <?php endif; ?>
                             
@@ -286,6 +424,17 @@ if (!empty($ujian_ids)) {
                 <p class="text-muted">Silakan hubungi guru atau administrator untuk informasi lebih lanjut.</p>
             </div>
             <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- Petunjuk Siswa -->
+    <section class="py-3">
+        <div class="container">
+            <div class="text-center">
+                <a href="petunjuk_siswa.pdf" target="_blank" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-book me-2"></i>Petunjuk Pengerjaan Ujian
+                </a>
+            </div>
         </div>
     </section>
 
