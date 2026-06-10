@@ -18,7 +18,8 @@ $offset = ($page - 1) * $limit;
 $filter_aksi = isset($_GET['aksi']) ? trim($_GET['aksi']) : '';
 $filter_entitas = isset($_GET['entitas']) ? trim($_GET['entitas']) : '';
 $filter_admin = isset($_GET['admin']) ? trim($_GET['admin']) : '';
-$filter_tgl = isset($_GET['tgl']) ? trim($_GET['tgl']) : '';
+$filter_dari = isset($_GET['dari']) ? trim($_GET['dari']) : '';
+$filter_sampai = isset($_GET['sampai']) ? trim($_GET['sampai']) : '';
 
 $where = [];
 $params = [];
@@ -39,10 +40,46 @@ if ($filter_admin !== '') {
     $params[] = '%' . $filter_admin . '%';
     $types .= 's';
 }
-if ($filter_tgl !== '') {
-    $where[] = 'DATE(a.created_at) = ?';
-    $params[] = $filter_tgl;
+if ($filter_dari !== '') {
+    $where[] = 'DATE(a.created_at) >= ?';
+    $params[] = $filter_dari;
     $types .= 's';
+}
+if ($filter_sampai !== '') {
+    $where[] = 'DATE(a.created_at) <= ?';
+    $params[] = $filter_sampai;
+    $types .= 's';
+}
+
+$message = '';
+$message_type = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['hapus'])) {
+    $dari = trim($_POST['dari'] ?? '');
+    $sampai = trim($_POST['sampai'] ?? '');
+
+    if (empty($dari) || empty($sampai)) {
+        $message = 'Pilih rentang tanggal terlebih dahulu.';
+        $message_type = 'warning';
+    } elseif ($dari > $sampai) {
+        $message = 'Tanggal "Dari" tidak boleh lebih besar dari "Sampai".';
+        $message_type = 'danger';
+    } else {
+        $st_hapus = $conn->prepare("DELETE FROM audit_log WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?");
+        $st_hapus->bind_param("ss", $dari, $sampai);
+        $st_hapus->execute();
+        $terhapus = $st_hapus->affected_rows;
+        $st_hapus->close();
+
+        if ($terhapus > 0) {
+            logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'DELETE', 'audit_log', 0, "Hapus $terhapus entri audit log dari $dari sampai $sampai");
+            $message = "Berhasil menghapus $terhapus entri audit log.";
+            $message_type = 'success';
+        } else {
+            $message = 'Tidak ada entri audit log dalam rentang tersebut.';
+            $message_type = 'info';
+        }
+    }
 }
 
 $where_clause = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -97,8 +134,18 @@ $entitas_list = $stmt_entitas->fetch_all(MYSQLI_ASSOC);
             <h3><i class="bi bi-journal-text me-2"></i>Audit Log <span class="badge bg-secondary ms-2"><?= number_format($total) ?> entri</span></h3>
         </div>
 
-            <div class="card p-3 mb-3">
-                <form method="GET" class="row g-2 filter-box align-items-end">
+        <?php if ($message): ?>
+        <div class="alert alert-<?= $message_type ?> alert-dismissible fade show" role="alert">
+            <i class="bi bi-<?= $message_type === 'success' ? 'check-circle' : ($message_type === 'danger' ? 'exclamation-triangle' : 'info-circle') ?> me-2"></i>
+            <?= $message ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
+
+        <!-- Filter -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body filter-box">
+                <form method="GET" class="row g-2 align-items-end">
                     <div class="col-md-2">
                         <label class="form-label small">Aksi</label>
                         <select name="aksi" class="form-select form-select-sm">
@@ -122,83 +169,114 @@ $entitas_list = $stmt_entitas->fetch_all(MYSQLI_ASSOC);
                         <input type="text" name="admin" class="form-control form-control-sm" placeholder="Cari admin..." value="<?= htmlspecialchars($filter_admin) ?>">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small">Tanggal</label>
-                        <input type="date" name="tgl" class="form-control form-control-sm" value="<?= htmlspecialchars($filter_tgl) ?>">
+                        <label class="form-label small">Dari Tanggal</label>
+                        <input type="date" name="dari" class="form-control form-control-sm" value="<?= htmlspecialchars($filter_dari) ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Sampai Tanggal</label>
+                        <input type="date" name="sampai" class="form-control form-control-sm" value="<?= htmlspecialchars($filter_sampai) ?>">
                     </div>
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-filter me-1"></i>Filter</button>
-                    </div>
-                    <div class="col-md-2">
-                        <a href="audit_log.php" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-x-circle me-1"></i>Reset</a>
+                        <a href="audit_log.php" class="btn btn-outline-secondary btn-sm w-100 mt-1"><i class="bi bi-x-circle me-1"></i>Reset</a>
                     </div>
                 </form>
             </div>
+        </div>
 
-            <div class="card">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Waktu</th>
-                                <th>Admin</th>
-                                <th>Aksi</th>
-                                <th>Entitas</th>
-                                <th>ID</th>
-                                <th>Detail</th>
-                                <th>IP</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($logs && $logs->num_rows > 0): ?>
-                            <?php while ($log = $logs->fetch_assoc()): ?>
-                            <tr>
-                                <td class="text-nowrap small"><?= htmlspecialchars($log['created_at']) ?></td>
-                                <td><?= htmlspecialchars($log['admin_username']) ?></td>
-                                <td>
-                                    <?php
-                                    $badge_class = 'bg-secondary';
-                                    if ($log['aksi'] === 'CREATE') $badge_class = 'bg-success';
-                                    elseif ($log['aksi'] === 'UPDATE') $badge_class = 'bg-primary';
-                                    elseif ($log['aksi'] === 'DELETE') $badge_class = 'bg-danger';
-                                    elseif ($log['aksi'] === 'RESET') $badge_class = 'bg-warning text-dark';
-                                    ?>
-                                    <span class="badge badge-aksi <?= $badge_class ?>"><?= htmlspecialchars($log['aksi']) ?></span>
-                                </td>
-                                <td><?= htmlspecialchars($log['entitas']) ?></td>
-                                <td><?= $log['entitas_id'] ? (int)$log['entitas_id'] : '-' ?></td>
-                                <td class="small"><?= htmlspecialchars($log['detail']) ?></td>
-                                <td class="small text-muted"><?= htmlspecialchars($log['ip_address'] ?? '-') ?></td>
-                            </tr>
-                            <?php endwhile; ?>
-                            <?php else: ?>
-                            <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">
-                                    <i class="bi bi-inbox me-1"></i>Tidak ada data audit log
-                                </td>
-                            </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+        <!-- Tabel log -->
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Admin</th>
+                            <th>Aksi</th>
+                            <th>Entitas</th>
+                            <th>ID</th>
+                            <th>Detail</th>
+                            <th>IP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($logs && $logs->num_rows > 0): ?>
+                        <?php while ($log = $logs->fetch_assoc()): ?>
+                        <tr>
+                            <td class="text-nowrap small"><?= htmlspecialchars($log['created_at']) ?></td>
+                            <td><?= htmlspecialchars($log['admin_username']) ?></td>
+                            <td>
+                                <?php
+                                $badge_class = 'bg-secondary';
+                                if ($log['aksi'] === 'CREATE') $badge_class = 'bg-success';
+                                elseif ($log['aksi'] === 'UPDATE') $badge_class = 'bg-primary';
+                                elseif ($log['aksi'] === 'DELETE') $badge_class = 'bg-danger';
+                                elseif ($log['aksi'] === 'RESET') $badge_class = 'bg-warning text-dark';
+                                ?>
+                                <span class="badge badge-aksi <?= $badge_class ?>"><?= htmlspecialchars($log['aksi']) ?></span>
+                            </td>
+                            <td><?= htmlspecialchars($log['entitas']) ?></td>
+                            <td><?= $log['entitas_id'] ? (int)$log['entitas_id'] : '-' ?></td>
+                            <td class="small"><?= htmlspecialchars($log['detail']) ?></td>
+                            <td class="small text-muted"><?= htmlspecialchars($log['ip_address'] ?? '-') ?></td>
+                        </tr>
+                        <?php endwhile; ?>
+                        <?php else: ?>
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox me-1"></i>Tidak ada data audit log
+                            </td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <?php if ($total_pages > 1): ?>
+        <nav class="mt-3">
+            <ul class="pagination pagination-sm justify-content-center">
+                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $page - 1 ?>&aksi=<?= urlencode($filter_aksi) ?>&entitas=<?= urlencode($filter_entitas) ?>&admin=<?= urlencode($filter_admin) ?>&dari=<?= urlencode($filter_dari) ?>&sampai=<?= urlencode($filter_sampai) ?>">Sebelumnya</a>
+                </li>
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                    <a class="page-link" href="?page=<?= $i ?>&aksi=<?= urlencode($filter_aksi) ?>&entitas=<?= urlencode($filter_entitas) ?>&admin=<?= urlencode($filter_admin) ?>&dari=<?= urlencode($filter_dari) ?>&sampai=<?= urlencode($filter_sampai) ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?page=<?= $page + 1 ?>&aksi=<?= urlencode($filter_aksi) ?>&entitas=<?= urlencode($filter_entitas) ?>&admin=<?= urlencode($filter_admin) ?>&dari=<?= urlencode($filter_dari) ?>&sampai=<?= urlencode($filter_sampai) ?>">Selanjutnya</a>
+                </li>
+            </ul>
+        </nav>
+        <?php endif; ?>
+
+        <!-- Hapus Log -->
+        <div class="card border-0 shadow-sm mt-3 <?= $total == 0 ? 'd-none' : '' ?>">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="fw-bold mb-1"><i class="bi bi-trash me-2 text-danger"></i>Hapus Log Lama</h6>
+                        <p class="text-muted small mb-0">Pilih rentang tanggal, lalu hapus entri audit log dalam periode tersebut. <strong class="text-danger">Aksi ini tidak bisa dibatalkan.</strong></p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <form method="POST" onsubmit="return confirm('Yakin ingin menghapus semua entri audit log dalam rentang tanggal yang dipilih? Aksi ini tidak bisa dibatalkan.');">
+                            <input type="hidden" name="dari" value="<?= htmlspecialchars($filter_dari) ?>">
+                            <input type="hidden" name="sampai" value="<?= htmlspecialchars($filter_sampai) ?>">
+                            <button type="submit" name="hapus" class="btn btn-outline-danger btn-sm"
+                                <?= (empty($filter_dari) || empty($filter_sampai)) ? 'disabled' : '' ?>>
+                                <i class="bi bi-trash me-1"></i>Hapus Log
+                                <?php if (!empty($filter_dari) && !empty($filter_sampai)): ?>
+                                (<?= htmlspecialchars($filter_dari) ?> s.d <?= htmlspecialchars($filter_sampai) ?>)
+                                <?php endif; ?>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
-
-            <?php if ($total_pages > 1): ?>
-            <nav class="mt-3">
-                <ul class="pagination pagination-sm justify-content-center">
-                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?page=<?= $page - 1 ?>&aksi=<?= urlencode($filter_aksi) ?>&entitas=<?= urlencode($filter_entitas) ?>&admin=<?= urlencode($filter_admin) ?>&tgl=<?= urlencode($filter_tgl) ?>">Sebelumnya</a>
-                    </li>
-                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <li class="page-item <?= $i === $page ? 'active' : '' ?>">
-                        <a class="page-link" href="?page=<?= $i ?>&aksi=<?= urlencode($filter_aksi) ?>&entitas=<?= urlencode($filter_entitas) ?>&admin=<?= urlencode($filter_admin) ?>&tgl=<?= urlencode($filter_tgl) ?>"><?= $i ?></a>
-                    </li>
-                    <?php endfor; ?>
-                    <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?page=<?= $page + 1 ?>&aksi=<?= urlencode($filter_aksi) ?>&entitas=<?= urlencode($filter_entitas) ?>&admin=<?= urlencode($filter_admin) ?>&tgl=<?= urlencode($filter_tgl) ?>">Selanjutnya</a>
-                    </li>
-                </ul>
-            </nav>
-            <?php endif; ?>
+        </div>
     </div>
+
+    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
 </body>
 </html>
