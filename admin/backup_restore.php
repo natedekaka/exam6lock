@@ -153,53 +153,6 @@ function php_backup($backup_dir, $conn, $database) {
 }
 
 /**
- * PHP-based database restore (no shell commands needed)
- */
-function php_restore($filepath, $conn) {
-    $sql = file_get_contents($filepath);
-    if ($sql === false || strlen($sql) < 10) {
-        return ['error' => 'File backup kosong atau tidak valid.'];
-    }
-
-    // Remove comments and split by semicolons
-    $sql_lines = explode("\n", $sql);
-    $clean_lines = [];
-    foreach ($sql_lines as $line) {
-        $trimmed = trim($line);
-        if (empty($trimmed)) continue;
-        if (strpos($trimmed, '-- ') === 0) continue;
-        if (strpos($trimmed, '#') === 0) continue;
-        // Remove inline comments at end of line
-        $line_no_comment = preg_replace('/\s*-- .*$/', '', $trimmed);
-        if (!empty(trim($line_no_comment))) {
-            $clean_lines[] = rtrim($line_no_comment);
-        }
-    }
-
-    $full_sql = implode("\n", $clean_lines);
-    $statements = explode(";\n", $full_sql);
-
-    $conn->begin_transaction();
-    try {
-        foreach ($statements as $stmt) {
-            $stmt = trim($stmt);
-            if (empty($stmt)) continue;
-            // Skip SET statements and comments
-            if (stripos($stmt, 'SET ') === 0) continue;
-            if (stripos($stmt, '--') === 0) continue;
-            if (!$conn->query($stmt)) {
-                throw new Exception("Error executing: " . substr($stmt, 0, 80) . "... - " . $conn->error);
-            }
-        }
-        $conn->commit();
-        return ['success' => 'Database berhasil direstore! Semua data telah diimpor.'];
-    } catch (Exception $e) {
-        $conn->rollback();
-        return ['error' => 'Restore gagal: ' . $e->getMessage()];
-    }
-}
-
-/**
  * Execute restore with error tolerance (skip errors on views, procedures, etc.)
  */
 function php_restore_tolerant($filepath, $conn) {
@@ -548,7 +501,7 @@ function format_bytes($bytes, $precision = 2) {
                                 </label>
                             </div>
 
-                            <button type="submit" name="restore_file" class="btn btn-danger btn-lg w-100" onclick="return confirm('PERINGATAN: Semua data yang ada akan ditimpa! Lanjutkan restore?')">
+                            <button type="submit" name="restore_file" class="btn btn-danger btn-lg w-100">
                                 <i class="bi bi-arrow-counterclockwise me-2"></i>Restore Database
                             </button>
                         </form>
