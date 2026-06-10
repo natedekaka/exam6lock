@@ -111,18 +111,68 @@ $active_page = basename(__FILE__);
             .sidebar, .overlay, .page-header, .main-content > .container-fluid > .card { display: none !important; }
             .main-content { margin-left: 0 !important; padding: 0 !important; }
             .container-fluid { padding: 0 !important; max-width: none !important; }
-            .kartu-wrapper { display: block; padding: 0.3in 0 0; gap: 0; }
-            .kartu-item {
-                box-shadow: none !important;
-                border: 1.5px solid #dee2e6;
-                border-radius: 10px;
-                margin: 0 auto 0.5in;
-                width: 340px;
-                page-break-after: always;
+
+            .kartu-wrapper {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4mm;
+                padding: 5mm;
+                justify-content: center;
             }
-            .kartu-item:last-child { page-break-after: auto; }
-            .kartu-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            @page { margin: 0.3in; }
+            .kartu-item {
+                width: calc(50% - 2mm);
+                box-shadow: none !important;
+                border: 1px solid #adb5bd;
+                border-radius: 3px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin-bottom: 0;
+            }
+            .kartu-item:last-child { margin-bottom: 0; }
+
+            .kartu-header {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                padding: 2.5mm 2mm 2mm;
+            }
+            .kartu-header .logo-wrap {
+                width: 10mm; height: 10mm;
+                margin-bottom: 0.5mm;
+            }
+            .kartu-header .logo-wrap img {
+                width: 9mm; height: 9mm;
+            }
+            .kartu-header .logo-wrap i {
+                font-size: 5mm;
+            }
+            .kartu-header h6 {
+                font-size: 3.2mm;
+                margin-bottom: 0.2mm;
+            }
+            .kartu-header .label-kartu {
+                font-size: 2.5mm;
+            }
+            .kartu-header::after {
+                bottom: -3mm;
+                height: 6mm;
+            }
+
+            .kartu-body {
+                padding: 3mm 2.5mm 1.5mm;
+            }
+            .kartu-body .info-row {
+                padding: 0.5mm 0;
+                font-size: 2.8mm;
+                border-bottom: 0.3px solid #eee;
+            }
+            .kartu-footer {
+                padding: 0 2mm 1.5mm;
+                font-size: 2.2mm;
+            }
+            @page {
+                margin: 5mm;
+                size: A4;
+            }
         }
     </style>
 </head>
