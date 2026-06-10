@@ -11,15 +11,41 @@ require_once '../config/init_sekolah.php';
 $sekolah = getKonfigurasiSekolah($conn);
 
 $filter_kelas = isset($_GET['kelas']) ? trim($_GET['kelas']) : '';
+$page = max(1, (int)($_GET['page'] ?? 1));
+$per_page = 50;
 
 $kelas_list = $conn->query("SELECT DISTINCT kelas FROM siswa WHERE is_active = 1 AND kelas IS NOT NULL AND kelas != '' ORDER BY kelas");
 
-$siswa_list = [];
+$count_sql = "SELECT COUNT(*) as total FROM siswa WHERE is_active = 1";
+$count_params = [];
+$count_types = '';
 if (!empty($filter_kelas)) {
-    $st = $conn->prepare("SELECT nis, nama_lengkap, kelas FROM siswa WHERE is_active = 1 AND kelas = ? ORDER BY nama_lengkap");
-    $st->bind_param("s", $filter_kelas);
+    $count_sql .= " AND kelas = ?";
+    $count_params[] = $filter_kelas;
+    $count_types .= 's';
+}
+$st_count = $conn->prepare($count_sql);
+if (!empty($count_params)) {
+    $st_count->bind_param($count_types, ...$count_params);
+}
+$st_count->execute();
+$total_siswa = (int)$st_count->get_result()->fetch_assoc()['total'];
+$st_count->close();
+
+$total_pages = max(1, ceil($total_siswa / $per_page));
+$page = min($page, $total_pages);
+$offset = ($page - 1) * $per_page;
+
+$sql = "SELECT nis, nama_lengkap, kelas FROM siswa WHERE is_active = 1";
+if (!empty($filter_kelas)) {
+    $sql .= " AND kelas = ?";
+}
+$sql .= " ORDER BY kelas, nama_lengkap LIMIT ? OFFSET ?";
+$st = $conn->prepare($sql);
+if (!empty($filter_kelas)) {
+    $st->bind_param("sii", $filter_kelas, $per_page, $offset);
 } else {
-    $st = $conn->prepare("SELECT nis, nama_lengkap, kelas FROM siswa WHERE is_active = 1 ORDER BY kelas, nama_lengkap");
+    $st->bind_param("ii", $per_page, $offset);
 }
 $st->execute();
 $siswa_list = $st->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -39,141 +65,11 @@ $active_page = basename(__FILE__);
     <link href="../vendor/fonts/inter.css" rel="stylesheet">
     <style>
         body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; }
-
-        .kartu-wrapper {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-            justify-content: center;
-            padding: 1rem 0;
-        }
-        .kartu-item {
-            width: 320px;
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            overflow: hidden;
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-        .kartu-header {
-            background: linear-gradient(135deg, <?= $sekolah['warna_primer'] ?> 0%, <?= $sekolah['warna_sekunder'] ?> 100%);
-            color: white;
-            padding: 1.25rem 1rem 1rem;
-            text-align: center;
-            position: relative;
-        }
-        .kartu-header::after {
-            content: '';
-            position: absolute;
-            bottom: -16px;
-            left: 0; right: 0;
-            height: 32px;
-            background: #fff;
-            border-radius: 50% 50% 0 0;
-        }
-        .kartu-header .logo-wrap {
-            width: 56px; height: 56px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 0.5rem;
-            overflow: hidden;
-        }
-        .kartu-header .logo-wrap img { width: 48px; height: 48px; object-fit: contain; }
-        .kartu-header .logo-wrap i { font-size: 1.5rem; color: white; }
-        .kartu-header h6 { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.15rem; }
-        .kartu-header .label-kartu { font-size: 0.7rem; opacity: 0.85; letter-spacing: 1px; }
-
-        .kartu-body { padding: 1.25rem 1rem 1rem; }
-        .kartu-body .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.35rem 0;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 0.82rem;
-        }
-        .kartu-body .info-row:last-child { border-bottom: none; }
-        .kartu-body .info-label { color: #6c757d; }
-        .kartu-body .info-value { font-weight: 600; color: #1a1a2e; }
-
-        .kartu-footer {
-            text-align: center;
-            padding: 0 1rem 1rem;
-            font-size: 0.7rem;
-            color: #adb5bd;
-        }
-
-        @media print {
-            body { background: white !important; margin: 0; }
-            .sidebar, .overlay, .page-header, .main-content > .container-fluid > .card { display: none !important; }
-            .main-content { margin-left: 0 !important; padding: 0 !important; }
-            .container-fluid { padding: 0 !important; max-width: none !important; }
-
-            .kartu-wrapper {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 4mm;
-                padding: 5mm;
-                justify-content: center;
-            }
-            .kartu-item {
-                width: calc(50% - 2mm);
-                box-shadow: none !important;
-                border: 1px solid #adb5bd;
-                border-radius: 3px;
-                page-break-inside: avoid;
-                break-inside: avoid;
-                margin-bottom: 0;
-            }
-            .kartu-item:last-child { margin-bottom: 0; }
-
-            .kartu-header {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                padding: 2.5mm 2mm 2mm;
-            }
-            .kartu-header .logo-wrap {
-                width: 10mm; height: 10mm;
-                margin-bottom: 0.5mm;
-            }
-            .kartu-header .logo-wrap img {
-                width: 9mm; height: 9mm;
-            }
-            .kartu-header .logo-wrap i {
-                font-size: 5mm;
-            }
-            .kartu-header h6 {
-                font-size: 3.2mm;
-                margin-bottom: 0.2mm;
-            }
-            .kartu-header .label-kartu {
-                font-size: 2.5mm;
-            }
-            .kartu-header::after {
-                bottom: -3mm;
-                height: 6mm;
-            }
-
-            .kartu-body {
-                padding: 3mm 2.5mm 1.5mm;
-            }
-            .kartu-body .info-row {
-                padding: 0.5mm 0;
-                font-size: 2.8mm;
-                border-bottom: 0.3px solid #eee;
-            }
-            .kartu-footer {
-                padding: 0 2mm 1.5mm;
-                font-size: 2.2mm;
-            }
-            @page {
-                margin: 5mm;
-                size: A4;
-            }
-        }
+        .table-siswa th { background: #f8f9fa; font-weight: 600; font-size: 0.85rem; white-space: nowrap; }
+        .table-siswa td { font-size: 0.88rem; vertical-align: middle; }
+        .table-siswa .nis-col { font-family: monospace; font-weight: 500; }
+        .pagination-info { font-size: 0.85rem; color: #6c757d; }
+        .page-link { font-size: 0.85rem; }
     </style>
 </head>
 <body>
@@ -193,10 +89,11 @@ $active_page = basename(__FILE__);
         </div>
 
         <div class="container-fluid pb-4">
-            <div class="card border-0 shadow-sm mb-4">
+            <!-- Filter -->
+            <div class="card border-0 shadow-sm mb-3">
                 <div class="card-body">
                     <form method="GET" class="row g-3 align-items-end">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-medium">Filter Kelas</label>
                             <select name="kelas" class="form-select" onchange="this.form.submit()">
                                 <option value="">-- Semua Kelas --</option>
@@ -209,69 +106,79 @@ $active_page = basename(__FILE__);
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-medium">&nbsp;</label>
-                            <div>
-                                <span class="badge bg-primary fs-6"><?= count($siswa_list) ?> peserta</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary fs-6"><?= $total_siswa ?> peserta</span>
+                                <span class="pagination-info">Hal <?= $page ?> dari <?= $total_pages ?></span>
                             </div>
                         </div>
-                        <div class="col-md-5 text-end">
-                            <?php if (!empty($siswa_list)): ?>
-                            <button type="button" class="btn btn-primary no-print" onclick="window.print()">
-                                <i class="bi bi-printer me-2"></i>Cetak Semua (<?= count($siswa_list) ?>)
-                            </button>
+                        <div class="col-md-6 text-end">
+                            <?php if ($total_siswa > 0): ?>
+                            <a href="kartu_peserta_cetak.php<?= !empty($filter_kelas) ? '?kelas=' . urlencode($filter_kelas) : '' ?>"
+                               class="btn btn-primary" target="_blank"
+                               onclick="this.innerHTML='<i class=\'bi bi-hourglass-split me-2\'></i>Menyiapkan...'; this.disabled=true;">
+                                <i class="bi bi-printer me-2"></i>Cetak Semua (<?= $total_siswa ?>)
+                            </a>
                             <?php endif; ?>
                         </div>
                     </form>
                 </div>
             </div>
 
+            <!-- Tabel siswa -->
             <?php if (empty($siswa_list)): ?>
             <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>Tidak ada siswa aktif ditemukan.
             </div>
             <?php else: ?>
-            <div class="text-center text-muted small mb-3 no-print">
-                <i class="bi bi-printer me-1"></i>Klik <strong>Cetak Semua</strong> untuk mencetak <?= count($siswa_list) ?> kartu peserta sekaligus
-            </div>
-
-            <div class="kartu-wrapper">
-                <?php foreach ($siswa_list as $siswa): ?>
-                <div class="kartu-item">
-                    <div class="kartu-header">
-                        <div class="logo-wrap">
-                            <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
-                                <img src="../uploads/<?= $sekolah['logo'] ?>" alt="Logo">
-                            <?php else: ?>
-                                <i class="bi bi-mortarboard-fill"></i>
-                            <?php endif; ?>
-                        </div>
-                        <h6><?= htmlspecialchars($sekolah['nama_sekolah']) ?></h6>
-                        <div class="label-kartu">KARTU PESERTA</div>
-                    </div>
-
-                    <div class="kartu-body">
-                        <div class="info-row">
-                            <span class="info-label">Username</span>
-                            <span class="info-value"><?= htmlspecialchars($siswa['nis']) ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Password</span>
-                            <span class="info-value" style="font-family: monospace; letter-spacing: 1px;"><?= htmlspecialchars($siswa['nis']) ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Nama Lengkap</span>
-                            <span class="info-value"><?= htmlspecialchars($siswa['nama_lengkap']) ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Kelas</span>
-                            <span class="info-value"><?= htmlspecialchars($siswa['kelas']) ?></span>
-                        </div>
-                    </div>
-
-                    <div class="kartu-footer">
-                        <i class="bi bi-info-circle me-1"></i>Hadir 15 menit sebelum ujian dimulai
-                    </div>
+            <div class="card border-0 shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover table-siswa mb-0">
+                        <thead>
+                            <tr>
+                                <th width="60">No</th>
+                                <th>Username (NIS)</th>
+                                <th>Nama Lengkap</th>
+                                <th width="120">Kelas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $no = $offset + 1; ?>
+                            <?php foreach ($siswa_list as $siswa): ?>
+                            <tr>
+                                <td class="text-muted"><?= $no++ ?></td>
+                                <td class="nis-col"><?= htmlspecialchars($siswa['nis']) ?></td>
+                                <td><?= htmlspecialchars($siswa['nama_lengkap']) ?></td>
+                                <td><?= htmlspecialchars($siswa['kelas']) ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
-                <?php endforeach; ?>
+
+                <?php if ($total_pages > 1): ?>
+                <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+                    <small class="text-muted">Menampilkan <?= $offset + 1 ?>-<?= min($offset + $per_page, $total_siswa) ?> dari <?= $total_siswa ?> peserta</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                                <a class="page-link" href="?<?= !empty($filter_kelas) ? 'kelas=' . urlencode($filter_kelas) . '&' : '' ?>&page=<?= $page - 1 ?>">Sebelum</a>
+                            </li>
+                            <?php
+                            $start = max(1, $page - 2);
+                            $end = min($total_pages, $page + 2);
+                            for ($i = $start; $i <= $end; $i++):
+                            ?>
+                            <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                                <a class="page-link" href="?<?= !empty($filter_kelas) ? 'kelas=' . urlencode($filter_kelas) . '&' : '' ?>&page=<?= $i ?>"><?= $i ?></a>
+                            </li>
+                            <?php endfor; ?>
+                            <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                                <a class="page-link" href="?<?= !empty($filter_kelas) ? 'kelas=' . urlencode($filter_kelas) . '&' : '' ?>&page=<?= $page + 1 ?>">Berikut</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
         </div>
