@@ -72,6 +72,29 @@
         link.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Menyiapkan...';
       });
     });
+
+    // ─── Reset tombol cetak yang buka tab baru pas user balik ────
+    var btnCetak = document.querySelectorAll('a.btn-cetak-kartu, a[target="_blank"].btn-primary');
+    btnCetak.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btn.dataset.html = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Membuka tab cetak...';
+        // Reset otomatis setelah 3 detik (tab baru pasti sudah terbuka)
+        setTimeout(function () {
+          if (btn.dataset.html) btn.innerHTML = btn.dataset.html;
+        }, 3000);
+      });
+    });
+
+    // Reset semua link target="_blank" pas tab dapat fokus lagi
+    window.addEventListener('focus', function () {
+      document.querySelectorAll('a[target="_blank"]').forEach(function (link) {
+        if (link.dataset.html) {
+          link.innerHTML = link.dataset.html;
+          delete link.dataset.html;
+        }
+      });
+    });
   });
 
 })();

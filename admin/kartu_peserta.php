@@ -114,8 +114,7 @@ $active_page = basename(__FILE__);
                         <div class="col-md-6 text-end">
                             <?php if ($total_siswa > 0): ?>
                             <a href="kartu_peserta_cetak.php<?= !empty($filter_kelas) ? '?kelas=' . urlencode($filter_kelas) : '' ?>"
-                               class="btn btn-primary" target="_blank"
-                               onclick="this.innerHTML='<i class=\'bi bi-hourglass-split me-2\'></i>Menyiapkan...'; this.disabled=true;">
+                               class="btn btn-primary btn-cetak-kartu" target="_blank">
                                 <i class="bi bi-printer me-2"></i>Cetak Semua (<?= $total_siswa ?>)
                             </a>
                             <?php endif; ?>
