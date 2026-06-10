@@ -137,9 +137,14 @@ $active_page = basename(__FILE__);
 
     <main class="dashboard-container">
         <!-- Greeting -->
-        <div class="greeting-section">
-            <h2>👋 Selamat datang, <?= htmlspecialchars($siswa_nama) ?>!</h2>
-            <p class="kelas-info"><?= htmlspecialchars($siswa_kelas) ?> — <?= htmlspecialchars($sekolah['nama_sekolah']) ?></p>
+        <div class="greeting-section d-flex flex-wrap justify-content-between align-items-start gap-2">
+            <div>
+                <h2>👋 Selamat datang, <?= htmlspecialchars($siswa_nama) ?>!</h2>
+                <p class="kelas-info"><?= htmlspecialchars($siswa_kelas) ?> — <?= htmlspecialchars($sekolah['nama_sekolah']) ?></p>
+            </div>
+            <a href="kartu_peserta.php" class="btn btn-outline-primary btn-sm rounded-pill no-print">
+                <i class="bi bi-card-text me-1"></i>Kartu Peserta
+            </a>
         </div>
 
         <!-- Stat Cards -->
