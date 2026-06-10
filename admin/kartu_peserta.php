@@ -107,9 +107,11 @@ $active_page = basename(__FILE__);
         }
 
         @media print {
-            body { background: white !important; margin: 0; padding: 0.3in; }
-            .no-print { display: none !important; }
-            .kartu-wrapper { display: block; padding: 0; gap: 0; }
+            body { background: white !important; margin: 0; }
+            .sidebar, .overlay, .page-header, .main-content > .container-fluid > .card { display: none !important; }
+            .main-content { margin-left: 0 !important; padding: 0 !important; }
+            .container-fluid { padding: 0 !important; max-width: none !important; }
+            .kartu-wrapper { display: block; padding: 0.3in 0 0; gap: 0; }
             .kartu-item {
                 box-shadow: none !important;
                 border: 1.5px solid #dee2e6;
@@ -198,8 +200,12 @@ $active_page = basename(__FILE__);
 
                     <div class="kartu-body">
                         <div class="info-row">
-                            <span class="info-label">NIS</span>
+                            <span class="info-label">Username</span>
                             <span class="info-value"><?= htmlspecialchars($siswa['nis']) ?></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Password</span>
+                            <span class="info-value" style="font-family: monospace; letter-spacing: 1px;"><?= htmlspecialchars($siswa['nis']) ?></span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Nama Lengkap</span>
