@@ -202,9 +202,9 @@ if (isset($_GET['refresh'])) {
                             <option value="super_admin">Super Admin</option>
                         </select>
                     </div>
-                    <div class="col-md-1">
+                    <div class="col-md-12 col-lg-1 d-grid">
                         <label class="form-label">&nbsp;</label>
-                        <button type="submit" name="add_user" class="btn btn-primary w-100">
+                        <button type="submit" name="add_user" class="btn btn-primary">
                             <i class="bi bi-plus-lg"></i> Tambah
                         </button>
                     </div>
