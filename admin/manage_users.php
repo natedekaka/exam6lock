@@ -195,17 +195,16 @@ if (isset($_GET['refresh'])) {
                         <label class="form-label">Nama Lengkap</label>
                         <input type="text" name="nama_lengkap" class="form-control" required>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Role</label>
                         <select name="role" class="form-select">
                             <option value="admin">Admin</option>
                             <option value="super_admin">Super Admin</option>
                         </select>
                     </div>
-                    <div class="col-md-12 col-lg-1 d-grid">
-                        <label class="form-label">&nbsp;</label>
+                    <div class="col-12 pt-2">
                         <button type="submit" name="add_user" class="btn btn-primary">
-                            <i class="bi bi-plus-lg"></i> Tambah
+                            <i class="bi bi-plus-lg"></i> Tambah Admin
                         </button>
                     </div>
                 </form>
