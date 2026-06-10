@@ -313,6 +313,21 @@ if (isset($_GET['edit'])) {
     $edit_ujian = $edit_result->fetch_assoc();
     $stmt->close();
 }
+
+// Dashboard stats
+$total_ujian = 0; $aktif_ujian = 0; $total_siswa = 0; $total_kelas = 0;
+$r_ujian = $conn->query("SELECT COUNT(*) as c, SUM(status='aktif') as a FROM ujian");
+if ($r_ujian) { $row = $r_ujian->fetch_assoc(); $total_ujian = $row['c']; $aktif_ujian = $row['a']; $r_ujian->free(); }
+$r_siswa = $conn->query("SELECT COUNT(*) as c FROM siswa");
+if ($r_siswa) { $total_siswa = $r_siswa->fetch_assoc()['c']; $r_siswa->free(); }
+$r_kelas = $conn->query("SELECT COUNT(*) as c FROM kelas");
+if ($r_kelas) { $total_kelas = $r_kelas->fetch_assoc()['c']; $r_kelas->free(); }
+$r_soal = $conn->query("SELECT COUNT(*) as c FROM soal");
+$total_soal = $r_soal ? $r_soal->fetch_assoc()['c'] : 0;
+if ($r_soal) $r_soal->free();
+$total_nilai = 0;
+$r_nilai = $conn->query("SELECT AVG(total_skor) as rata FROM hasil_ujian");
+if ($r_nilai) { $total_nilai = round($r_nilai->fetch_assoc()['rata'] ?? 0, 1); $r_nilai->free(); }
 ?>
 
 <!DOCTYPE html>
@@ -321,451 +336,69 @@ if (isset($_GET['edit'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Dashboard Admin - Manajemen Ujian</title>
+    <title>Dashboard - <?= htmlspecialchars($sekolah['nama_sekolah']) ?></title>
     <link href="../vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link href="../vendor/fonts/inter.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --secondary: #64748b;
-            --success: #10b981;
-            --danger: #ef4444;
-            --dark: #1e293b;
-            --light: #f8fafc;
-            --border: #e2e8f0;
-            --sidebar-width: 260px;
-        }
-        
-        * { font-family: 'Inter', sans-serif; }
-        
-        body { background-color: #f1f5f9; min-height: 100vh; }
-        
-        .sidebar { 
-            width: var(--sidebar-width); 
-            min-height: 100vh; 
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-        }
-        
-        .sidebar-brand { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-brand h5 { color: #fff; font-weight: 600; margin: 0; }
-        
-        .school-logo {
-            width: 55px;
-            height: 55px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-        }
-        
-        .sidebar a { 
-            color: rgba(255,255,255,0.7); 
-            text-decoration: none; 
-            padding: 0.875rem 1.5rem; 
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            transition: all 0.2s ease;
-            border-left: 3px solid transparent;
-            font-size: 0.9375rem;
-            position: relative;
-            z-index: 10;
-        }
-        
-        .sidebar a:hover { background: rgba(255,255,255,0.05); color: #fff; }
-        .sidebar a.active { background: rgba(79, 70, 229, 0.2); color: #fff; border-left-color: var(--primary); }
-        
-        .main-content { margin-left: var(--sidebar-width); padding: 2rem; transition: margin-left 0.3s ease; width: calc(100% - var(--sidebar-width)); box-sizing: border-box; min-width: 0; z-index: 1; }
-        
-        .page-header {
-            background: #fff;
-            border-radius: 12px;
-            padding: 1.5rem 2rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        
-        .page-header h3 { margin: 0; font-weight: 600; color: var(--dark); }
-        
-        .card { border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
-        .card-header { background: #fff; border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem; font-weight: 600; color: var(--dark); }
-        .card-body { padding: 1.5rem; }
-        
-        .table-scroll { 
-            overflow-x: auto; 
-            overflow-y: visible;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        .form-control, .form-select {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 0.625rem 0.875rem;
-            font-size: 0.9375rem;
-        }
-        
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-        
-        .btn { border-radius: 8px; padding: 0.625rem 1.25rem; font-weight: 500; transition: all 0.2s ease; white-space: nowrap; }
-        .btn-primary { background: var(--primary); border-color: var(--primary); }
-        .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
-        
-        .table { table-layout: auto; width: 100%; border-collapse: separate; }
-        .table thead th { background: #f8fafc; border-bottom: 2px solid var(--border); color: var(--secondary); font-weight: 600; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 1rem; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
-        .table tbody td { padding: 1rem; vertical-align: middle; border-bottom: 1px solid var(--border); white-space: nowrap; }
-        .table tbody tr:hover { background: #f8fafc; }
-        
-        .badge { font-weight: 500; padding: 0.375rem 0.75rem; border-radius: 6px; font-size: 0.75rem; }
-        
-        .mobile-toggle {
-            display: none;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1001;
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 0.625rem;
-            font-size: 1.25rem;
-        }
-        
-        .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
-        
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .action-btn-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.25rem;
-            text-decoration: none;
-        }
-        
-        .action-btn-group:hover {
-            text-decoration: none;
-        }
-        
-        .action-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            transition: all 0.2s ease;
-            font-size: 1.1rem;
-            text-decoration: none;
-            font-family: bootstrap-icons !important;
-        }
-        
-        .action-btn i {
-            font-family: bootstrap-icons !important;
-            font-style: normal;
-            font-variant: normal;
-            text-transform: none;
-            line-height: 1;
-            font-size: 1.1rem;
-        }
-        
-        .action-btn-label {
-            font-size: 0.65rem;
-            font-weight: 500;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        
-        .action-btn-group:hover .action-btn {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        
-        .action-btn-edit {
-            background: #fef3c7;
-            color: #d97706 !important;
-        }
-        
-        .action-btn-edit:hover {
-            background: #fde68a;
-            color: #b45309 !important;
-        }
-        
-        .action-btn-toggle-on {
-            background: #dcfce7;
-            color: #16a34a !important;
-        }
-        
-        .action-btn-toggle-on:hover {
-            background: #bbf7d0;
-            color: #15803d !important;
-        }
-        
-        .action-btn-toggle-off {
-            background: #fee2e2;
-            color: #dc2626 !important;
-        }
-        
-        .action-btn-toggle-off:hover {
-            background: #fecaca;
-            color: #b91c1c !important;
-        }
-        
-        .action-btn-bank {
-            background: #dbeafe;
-            color: #2563eb !important;
-        }
-        
-        .action-btn-bank:hover {
-            background: #bfdbfe;
-            color: #1d4ed8 !important;
-        }
-        
-        .action-btn-delete {
-            background: #f3f4f6;
-            color: #6b7280 !important;
-        }
-        
-        .action-btn-delete:hover {
-            background: #fee2e2;
-            color: #dc2626 !important;
-        }
-        
-        .btn-action-label {
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-        
-        @media (max-width: 992px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.show { transform: translateX(0); }
-            .main-content { margin-left: 0; width: 100%; padding: 4rem 1rem 1rem; }
-            .mobile-toggle { display: flex; }
-            .overlay.show { display: block; }
-            .page-header { padding: 1rem; flex-direction: column; align-items: flex-start; }
-        }
-        
-        @media (max-width: 576px) {
-            .page-header { padding: 1rem; }
-            .page-header h3 { font-size: 1.1rem; }
-            .card { margin-bottom: 1rem; border-radius: 8px; }
-            .card-header { padding: 1rem; font-size: 0.95rem; flex-direction: column; gap: 0.5rem; align-items: flex-start !important; }
-            .card-body { padding: 1rem; }
-            .card-body .row { margin: 0; }
-            .card-body .col-md-6, .card-body .col-md-3, .card-body .col-md-4, .card-body .col-md-12 { 
-                padding-left: 0; 
-                padding-right: 0; 
-                margin-bottom: 0.75rem;
-            }
-            .form-label { font-size: 0.875rem; margin-bottom: 0.25rem; }
-            .form-control, .form-select { 
-                font-size: 0.875rem; 
-                padding: 0.5rem 0.75rem;
-            }
-            .btn { 
-                width: 100%; 
-                margin-bottom: 0.5rem; 
-                padding: 0.5rem 1rem;
-                font-size: 0.875rem;
-            }
-            .btn-group .btn { width: auto; margin-bottom: 0; }
-            .table-scroll { 
-                margin: 0 -1rem; 
-                padding: 0 1rem;
-            }
-            .table { 
-                font-size: 0.8rem; 
-                min-width: 600px;
-            }
-            .table thead th, .table tbody td { 
-                padding: 0.5rem 0.25rem; 
-                white-space: nowrap;
-            }
-            .badge { 
-                font-size: 0.65rem; 
-                padding: 0.25rem 0.5rem;
-            }
-            .dropdown-menu { 
-                font-size: 0.875rem; 
-                min-width: 140px;
-            }
-            .dropdown-item { 
-                padding: 0.5rem 0.75rem; 
-            }
-            .sidebar-brand { padding: 1rem; }
-            .sidebar-brand h5 { font-size: 1rem; }
-            .sidebar-menu a { padding: 0.75rem 1rem; font-size: 0.875rem; }
-            .school-logo { width: 40px; height: 40px; }
-            .text-white.fw-bold { font-size: 0.75rem; }
-            .mobile-toggle { 
-                top: 0.75rem; 
-                left: 0.75rem; 
-                padding: 0.5rem;
-                font-size: 1.1rem;
-            }
-            .main-content { padding: 3.5rem 0.75rem 0.75rem; }
-            .toast-notification { 
-                right: 0.5rem; 
-                left: 0.5rem; 
-                min-width: auto;
-            }
-        }
-        
-        .animate-fade-in { animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
         .alert-danger-conflict {
             background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
             border: 1px solid #fecaca;
             border-left: 4px solid #ef4444;
         }
-
-        .delete-modal .modal-content {
-            border: none;
-            border-radius: 16px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
-
-        .delete-modal .modal-header {
-            border-bottom: none;
-            padding: 1.5rem 1.5rem 0;
-        }
-
-        .delete-modal .modal-body {
-            padding: 1rem 1.5rem 1.5rem;
-            text-align: center;
-        }
-
-        .delete-modal .modal-footer {
-            border-top: none;
-            padding: 0 1.5rem 1.5rem;
-            justify-content: center;
-            gap: 0.75rem;
-        }
-
-        .delete-icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1rem;
-        }
-
-        .delete-icon i {
-            font-size: 2.5rem;
-            color: #ef4444;
-        }
-
-        .toast-notification {
-            position: fixed;
-            top: 1.5rem;
-            right: 1.5rem;
-            z-index: 9999;
-            min-width: 300px;
-        }
-
-        .toast-notification.show {
-            animation: slideIn 0.4s ease, fadeOut 0.4s ease 2.6s forwards;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(120%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-
-        .toast-success {
-            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-            border: 1px solid #a7f3d0;
-            border-left: 4px solid #10b981;
-            border-radius: 12px;
-        }
-
-        .toast-success .toast-icon {
-            color: #10b981;
-        }
     </style>
 </head>
 <body>
-    <button class="mobile-toggle" onclick="toggleSidebar()">
-        <i class="bi bi-list"></i>
-    </button>
-    
-    <div class="overlay" onclick="toggleSidebar()"></div>
-
-    <div class="sidebar">
-        <div class="sidebar-brand text-center">
-            <div class="school-logo mb-2">
-                <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
-                    <img src="../uploads/<?= $sekolah['logo'] ?>" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
-                <?php else: ?>
-                    <i class="bi bi-mortarboard-fill" style="font-size: 1.8rem;"></i>
-                <?php endif; ?>
-            </div>
-            <div class="text-white fw-bold" style="font-size: 0.85rem;"><?= htmlspecialchars($sekolah['nama_sekolah']) ?></div>
-            <h5 class="mt-2"><i class="bi bi-gear me-1"></i>Admin Panel</h5>
-        </div>
-        <div class="sidebar-menu">
-            <a href="index.php" class="active"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
-            <a href="tambah_soal.php"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
-            <a href="bank_soal.php"><i class="bi bi-database-fill"></i> Bank Soal Global</a>
-            <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
-            <a href="analytics.php"><i class="bi bi-graph-up"></i> Analytics</a>
-            <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
-            <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
-            <a href="kelola_kelas.php"><i class="bi bi-diagram-3-fill"></i> Kelola Kelas</a>
-            <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
-            <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
-            <a href="backup_restore.php"><i class="bi bi-cloud-arrow-up-fill"></i> Backup & Restore</a>
-            <?php endif; ?>
-            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
-            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
-            <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
-            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
-            <?php endif; ?>
-            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
-            <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
-        </div>
-    </div>
+    <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>
 
     <div class="main-content">
-        <div class="container-fluid px-4">
-        <div class="page-header animate-fade-in">
-            <h3><i class="bi bi-clipboard-data me-2"></i>Manajemen Ujian - <?= htmlspecialchars($sekolah['nama_sekolah']) ?></h3>
-            <span class="badge bg-primary fs-6"><?= $result->num_rows ?> ujian</span>
+        <div class="page-header-with-breadcrumb animate-fade-in">
+            <ul class="breadcrumb-custom">
+                <li class="active">Dashboard</li>
+            </ul>
+            <h3><i class="bi bi-speedometer2 me-2"></i>Dashboard <?= htmlspecialchars($sekolah['nama_sekolah']) ?></h3>
         </div>
-        
+
+        <!-- Dashboard Stats -->
+        <div class="row g-3 mb-4 animate-fade-in">
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card stat-primary">
+                    <div class="stat-icon"><i class="bi bi-journal-text"></i></div>
+                    <div class="stat-value"><?= $total_ujian ?></div>
+                    <div class="stat-label">Total Ujian</div>
+                    <div class="stat-trend text-success"><i class="bi bi-check-circle-fill"></i> <?= $aktif_ujian ?> aktif</div>
+                    <div class="stat-bg-icon bi bi-journal-text"></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card stat-success">
+                    <div class="stat-icon"><i class="bi bi-people"></i></div>
+                    <div class="stat-value"><?= $total_siswa ?></div>
+                    <div class="stat-label">Total Siswa</div>
+                    <div class="stat-trend text-muted"><i class="bi bi-diagram-3 me-1"></i><?= $total_kelas ?> kelas</div>
+                    <div class="stat-bg-icon bi bi-people"></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card stat-warning">
+                    <div class="stat-icon"><i class="bi bi-question-circle"></i></div>
+                    <div class="stat-value"><?= $total_soal ?></div>
+                    <div class="stat-label">Total Soal</div>
+                    <div class="stat-trend text-muted"><i class="bi bi-database me-1"></i>bank soal</div>
+                    <div class="stat-bg-icon bi bi-question-circle"></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-card stat-info">
+                    <div class="stat-icon"><i class="bi bi-bar-chart"></i></div>
+                    <div class="stat-value"><?= $total_nilai ?></div>
+                    <div class="stat-label">Rata-rata Nilai</div>
+                    <div class="stat-trend text-muted">dari semua ujian</div>
+                    <div class="stat-bg-icon bi bi-bar-chart"></div>
+                </div>
+            </div>
+        </div>
+
         <?php if ($message): ?>
         <div class="alert <?= ($message_type === 'danger' && strpos($message, 'pengguna lain') !== false) ? 'alert-danger-conflict' : 'alert-'.$message_type ?> alert-dismissible fade show animate-fade-in" role="alert">
             <?php if ($message_type === 'danger' && strpos($message, 'pengguna lain') !== false): ?>

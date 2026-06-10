@@ -81,56 +81,23 @@ $list = $conn->query("SELECT p.*, a.username as admin_name FROM pengumuman p LEF
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengumuman - <?= htmlspecialchars($sekolah['nama_sekolah'] ?? 'Exam6') ?></title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="../vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <link href="../vendor/fonts/inter.css" rel="stylesheet">
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #f0f2f5; }
-        .sidebar { background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 1.5rem 1rem; }
-        .sidebar h5 { color: #e0e0e0; font-weight: 600; letter-spacing: 0.5px; }
-        .sidebar-menu a { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; color: #b0b0b0; text-decoration: none; border-radius: 10px; transition: all 0.2s; font-size: 0.9rem; }
-        .sidebar-menu a:hover, .sidebar-menu a.active { background: rgba(255,255,255,0.1); color: #fff; }
-        .sidebar-menu a i { width: 20px; text-align: center; }
-        .main-content { padding: 2rem; }
-        .card { border: none; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
         .badge-tipe { font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 20px; }
-        @media (max-width: 768px) { .sidebar { min-height: auto; } .main-content { padding: 1rem; } }
     </style>
 </head>
 <body>
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-2 sidebar">
-            <div class="text-center mb-4">
-                <i class="bi bi-megaphone text-white" style="font-size: 2.5rem;"></i>
-                <h5 class="mt-2"><i class="bi bi-gear me-1"></i>Admin Panel</h5>
-            </div>
-            <div class="sidebar-menu">
-                <a href="index.php"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
-                <a href="tambah_soal.php"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
-                <a href="bank_soal.php"><i class="bi bi-database-fill"></i> Bank Soal Global</a>
-                <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
-                <a href="analytics.php"><i class="bi bi-graph-up"></i> Analytics</a>
-                <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
-                <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
-                <a href="kelola_kelas.php"><i class="bi bi-diagram-3-fill"></i> Kelola Kelas</a>
-                <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
-                <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
-                <a href="backup_restore.php"><i class="bi bi-cloud-arrow-up-fill"></i> Backup & Restore</a>
-                <?php endif; ?>
-                <a href="pengumuman.php" class="active"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
-                <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
-                <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
-                <?php endif; ?>
-                <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
-                <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
-            </div>
+    <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>
+    <div class="main-content">
+        <div class="page-header-with-breadcrumb animate-fade-in">
+            <ul class="breadcrumb-custom">
+                <li><a href="index.php">Dashboard</a></li>
+                <li class="active">Pengumuman</li>
+            </ul>
+            <h3><i class="bi bi-megaphone-fill me-2"></i>Pengumuman</h3>
         </div>
-        <div class="col-md-10 main-content">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold mb-0"><i class="bi bi-megaphone-fill me-2"></i>Pengumuman</h4>
-            </div>
 
             <?php if (isset($message)): ?>
             <div class="alert alert-<?= $message_type ?> alert-dismissible fade show"><?= htmlspecialchars($message) ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
@@ -213,9 +180,8 @@ $list = $conn->query("SELECT p.*, a.username as admin_name FROM pengumuman p LEF
                     </table>
                 </div>
             </div>
-        </div>
     </div>
-</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

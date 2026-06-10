@@ -255,86 +255,30 @@ foreach ($violation_data as $v) {
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link href="../vendor/fonts/poppins.css" rel="stylesheet">
     <style>
-        * { font-family: 'Poppins', system-ui, -apple-system, sans-serif; }
-        body { background: #f1f5f9; margin: 0; }
-        .sidebar { 
-            width: 260px; 
-            min-height: 100vh; 
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1000;
-            padding: 0;
-        }
-        .main-content { margin-left: 260px; padding: 25px; background: #f1f5f9; min-height: 100vh; }
-        .sidebar-menu { padding: 20px 0; }
-        .sidebar-menu a {
-            display: block;
-            padding: 0.75rem 1.5rem;
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-        .sidebar-menu a:hover, .sidebar-menu a.active {
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-        .sidebar-menu a i { margin-right: 10px; width: 20px; }
-        .card { 
-            border: none; 
-            border-radius: 12px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06); 
-            margin-bottom: 20px;
-        }
-        .card-body { padding: 20px; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
         .status-active { background: #10b981; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .progress-bar-mini { height: 6px; border-radius: 3px; background: #e5e7eb; overflow: hidden; }
         .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); }
-        .badge { padding: 0.5em 0.75em; font-weight: 500; }
-        .btn { padding: 0.5rem 1rem; border-radius: 8px; font-weight: 500; }
     </style>
 </head>
 <body>
     <div class="d-flex">
-        <div class="sidebar">
-            <div class="text-center py-4" style="background: rgba(0,0,0,0.1);">
-                <div style="width: 80px; height: 80px; background: white; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
-                    <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
-                    <img src="../uploads/<?= $sekolah['logo'] ?>" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;">
-                    <?php else: ?>
-                    <i class="bi bi-mortarboard-fill" style="font-size: 2.5rem; color: #667eea;"></i>
-                    <?php endif; ?>
-                </div>
-                <div class="text-white fw-bold" style="font-size: 0.85rem;"><?= htmlspecialchars($sekolah['nama_sekolah']) ?></div>
-                <h5 class="mt-2"><i class="bi bi-gear me-1"></i>Admin Panel</h5>
-            </div>
-            <div class="sidebar-menu">
-                <a href="index.php"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
-                <a href="tambah_soal.php"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
-                <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
-                <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
-                <a href="monitor_ujian.php" class="active"><i class="bi bi-display"></i> Monitor Ujian</a>
-                <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
-                <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
-                <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
-                <?php endif; ?>
-            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
-            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
-            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
-                <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
-            </div>
-        </div>
+    <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>
         
         <div class="main-content">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold">Monitor Progress Ujian</h4>
-                <button onclick="location.reload()" class="btn btn-outline-primary">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                </button>
+            <div class="page-header-with-breadcrumb">
+                <ul class="breadcrumb-custom">
+                    <li><a href="index.php"><i class="bi bi-house"></i> Dashboard</a></li>
+                    <li>Nilai &amp; Analisis</li>
+                    <li class="active">Monitor Ujian</li>
+                </ul>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h3><i class="bi bi-display"></i> Monitor Progress Ujian</h3>
+                    <button onclick="location.reload()" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
             </div>
             
             <div class="card mb-4">

@@ -284,7 +284,7 @@ if (!empty($ujian_ids)) {
                     <p class="hero-subtitle">Selamat datang! Silakan pilih ujian yang tersedia di bawah ini untuk memulai.</p>
                     <div class="mt-4">
                         <?php if (isset($_SESSION['siswa_id'])): ?>
-                            <a href="siswa/profil.php" class="btn btn-light me-2">
+                            <a href="siswa/dashboard.php" class="btn btn-light me-2">
                                 <i class="bi bi-person-circle me-2"></i><?= htmlspecialchars($_SESSION['siswa_nama']) ?>
                             </a>
                             <a href="siswa/logout.php" class="btn btn-outline-light">
@@ -343,7 +343,7 @@ if (!empty($ujian_ids)) {
                     <h4 class="fw-bold">
                         <i class="bi bi-collection-fill me-2 text-primary"></i>Ujian Tersedia
                     </h4>
-                    <p class="text-muted">Klik pada kartu ujian untuk memulai</p>
+                    <p class="text-muted"><?= isset($_SESSION['siswa_id']) ? 'Klik pada kartu ujian untuk memulai' : 'Login terlebih dahulu untuk mengerjakan ujian' ?></p>
                 </div>
             </div>
             
@@ -409,9 +409,15 @@ if (!empty($ujian_ids)) {
                             </div>
                             <?php endif; ?>
                             
+                            <?php if (isset($_SESSION['siswa_id'])): ?>
                             <a href="ujian.php?id=<?= $ujian['id'] ?>" class="btn btn-ujian text-white w-100">
                                 <i class="bi bi-pencil-square me-2"></i>Mulai Ujian
                             </a>
+                            <?php else: ?>
+                            <a href="siswa/login.php" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login untuk Mengerjakan
+                            </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -426,51 +432,6 @@ if (!empty($ujian_ids)) {
             <?php endif; ?>
         </div>
     </section>
-
-    <!-- Petunjuk Siswa -->
-    <section class="py-3">
-        <div class="container">
-            <div class="text-center">
-                <a href="petunjuk_siswa.pdf" target="_blank" class="btn btn-outline-secondary btn-lg">
-                    <i class="bi bi-book me-2"></i>Petunjuk Pengerjaan Ujian
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Riwayat Nilai Section -->
-    <?php $tampilkan_riwayat = $sekolah['tampilkan_riwayat'] ?? 'ya'; ?>
-    <?php if ($tampilkan_riwayat === 'ya'): ?>
-    <section class="py-4 bg-light">
-        <div class="container">
-            <div class="card">
-                <div class="card-body text-center py-4">
-                    <h5 class="fw-bold mb-3">
-                        <i class="bi bi-clock-history me-2 text-primary"></i>Cek Riwayat Nilai
-                    </h5>
-                    <p class="text-muted mb-3">Masukkan NIS Anda untuk melihat riwayat nilai ujian</p>
-                    <form method="GET" action="riwayat.php" class="row justify-content-center g-3">
-                        <div class="col-md-4">
-                            <input type="text" name="nis" id="nisInput" class="form-control form-control-lg" required placeholder="Masukkan NIS">
-                        </div>
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-search me-2"></i>Cari
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </section>
-    <script>
-        // Auto-fill NIS from localStorage if available
-        const savedNis = localStorage.getItem('exam_nis');
-        if (savedNis && document.getElementById('nisInput')) {
-            document.getElementById('nisInput').value = savedNis;
-        }
-    </script>
-    <?php endif; ?>
 
     <!-- Footer -->
     <footer class="footer">

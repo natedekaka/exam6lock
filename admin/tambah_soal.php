@@ -493,141 +493,6 @@ if (isset($_SESSION['import_message'])) {
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link href="../vendor/fonts/inter.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --secondary: #64748b;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --dark: #1e293b;
-            --light: #f8fafc;
-            --border: #e2e8f0;
-            --sidebar-width: 260px;
-        }
-        
-        * { font-family: 'Inter', sans-serif; }
-        
-        body { 
-            background-color: #f1f5f9; 
-            min-height: 100vh;
-        }
-        
-        .sidebar { 
-            width: var(--sidebar-width); 
-            min-height: 100vh; 
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-        }
-        
-        .sidebar-brand { 
-            padding: 1.5rem; 
-            border-bottom: 1px solid rgba(255,255,255,0.1); 
-        }
-        .sidebar-brand h5 { 
-            color: #fff; 
-            font-weight: 600; 
-            margin: 0; 
-        }
-        
-        .school-logo {
-            width: 55px;
-            height: 55px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-        }
-        
-        .sidebar-brand h5 {
-            color: #fff;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .sidebar-menu {
-            padding: 1rem 0;
-        }
-        
-        .sidebar a { 
-            color: rgba(255,255,255,0.7); 
-            text-decoration: none; 
-            padding: 0.875rem 1.5rem; 
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            transition: all 0.2s ease;
-            border-left: 3px solid transparent;
-            font-size: 0.9375rem;
-        }
-        
-        .sidebar a:hover { 
-            background: rgba(255,255,255,0.05);
-            color: #fff;
-        }
-        
-        .sidebar a.active { 
-            background: rgba(79, 70, 229, 0.2);
-            color: #fff;
-            border-left-color: var(--primary);
-        }
-        
-        .sidebar a i {
-            font-size: 1.125rem;
-            width: 1.5rem;
-            text-align: center;
-        }
-        
-        .main-content {
-            margin-left: var(--sidebar-width);
-            padding: 2rem;
-            transition: margin-left 0.3s ease;
-        }
-        
-        .page-header {
-            background: #fff;
-            border-radius: 12px;
-            padding: 1.5rem 2rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        
-        .page-header h3 {
-            margin: 0;
-            font-weight: 600;
-            color: var(--dark);
-        }
-        
-        .card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            margin-bottom: 1.5rem;
-        }
-        
-        .card-header {
-            background: #fff;
-            border-bottom: 1px solid var(--border);
-            padding: 1.25rem 1.5rem;
-            font-weight: 600;
-            color: var(--dark);
-        }
-        
-        .card-body {
-            padding: 1.5rem;
-        }
-        
         .card-body.scrollable-table {
             max-height: 500px;
             overflow-y: auto;
@@ -649,104 +514,6 @@ if (isset($_SESSION['import_message'])) {
         
         .card-body.scrollable-table::-webkit-scrollbar-thumb:hover {
             background: #555;
-        }
-        
-        .form-label {
-            font-weight: 500;
-            color: var(--dark);
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
-        }
-        
-        .form-control, .form-select {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 0.625rem 0.875rem;
-            font-size: 0.9375rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-        
-        textarea.form-control {
-            resize: vertical;
-            min-height: 100px;
-        }
-        
-        .btn {
-            border-radius: 8px;
-            padding: 0.625rem 1.25rem;
-            font-weight: 500;
-            font-size: 0.9375rem;
-            transition: all 0.2s ease;
-        }
-        
-        .btn-primary {
-            background: var(--primary);
-            border-color: var(--primary);
-        }
-        
-        .btn-primary:hover {
-            background: var(--primary-hover);
-            border-color: var(--primary-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-        }
-        
-        .btn-secondary {
-            background: var(--secondary);
-            border-color: var(--secondary);
-        }
-        
-        .btn-warning {
-            background: var(--warning);
-            border-color: var(--warning);
-            color: #fff;
-        }
-        
-        .btn-danger {
-            background: var(--danger);
-            border-color: var(--danger);
-        }
-        
-        .btn-sm {
-            padding: 0.375rem 0.75rem;
-            font-size: 0.8125rem;
-        }
-        
-        .table {
-            margin-bottom: 0;
-        }
-        
-        .table thead th {
-            background: #f8fafc;
-            border-bottom: 2px solid var(--border);
-            color: var(--secondary);
-            font-weight: 600;
-            font-size: 0.8125rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 1rem;
-        }
-        
-        .table tbody td {
-            padding: 1rem;
-            vertical-align: middle;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .table tbody tr:hover {
-            background: #f8fafc;
-        }
-        
-        .badge {
-            font-weight: 500;
-            padding: 0.375rem 0.75rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
         }
         
         .preview-img { 
@@ -830,57 +597,6 @@ if (isset($_SESSION['import_message'])) {
         .opsi-e { background: #e0e7ff; color: #4338ca; }
         
         @media (max-width: 576px) {
-            .sidebar a {
-                font-size: 0.875rem;
-                padding: 0.75rem 1rem;
-            }
-            
-            .sidebar-brand {
-                padding: 1rem;
-            }
-            
-            .sidebar-brand h5 {
-                font-size: 0.75rem;
-            }
-            
-            .school-logo {
-                width: 40px;
-                height: 40px;
-            }
-            
-            .text-white.fw-bold {
-                font-size: 0.75rem;
-            }
-            
-            .main-content {
-                padding: 3.5rem 0.5rem 0.5rem;
-                width: 100%;
-            }
-            
-            .page-header {
-                padding: 1rem;
-                flex-direction: column;
-                gap: 0.75rem;
-            }
-            
-            .page-header h3 {
-                font-size: 1.1rem;
-            }
-            
-            .page-header .btn {
-                width: 100%;
-                font-size: 0.8125rem;
-            }
-            
-            .card {
-                margin-bottom: 1rem;
-                border-radius: 8px;
-            }
-            
-            .card-body {
-                padding: 0.75rem;
-            }
-            
             .question-box {
                 padding: 1rem;
             }
@@ -903,47 +619,10 @@ if (isset($_SESSION['import_message'])) {
                 font-size: 0.75rem;
             }
             
-            .table {
-                font-size: 0.75rem;
-                min-width: 500px;
-            }
-            
-            .table thead th, .table tbody td {
-                padding: 0.375rem 0.25rem;
-            }
-            
-            .btn {
-                padding: 0.375rem 0.75rem;
-                font-size: 0.8125rem;
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-            
-            .btn:last-child {
-                margin-bottom: 0;
-            }
-            
             .btn-group {
                 display: flex;
                 flex-direction: column;
                 gap: 0.5rem;
-            }
-            
-            .mobile-toggle {
-                padding: 0.5rem;
-                font-size: 1rem;
-                top: 0.5rem;
-                left: 0.5rem;
-            }
-            
-            .form-label {
-                font-size: 0.8125rem;
-                margin-bottom: 0.25rem;
-            }
-            
-            .form-control, .form-select {
-                font-size: 0.875rem;
-                padding: 0.5rem 0.75rem;
             }
             
             .table-scroll {
@@ -952,110 +631,10 @@ if (isset($_SESSION['import_message'])) {
             }
         }
         
-        .mobile-toggle {
-            display: none;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1001;
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 0.625rem;
-            font-size: 1.25rem;
-        }
-        
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 999;
-        }
-        
-        .toast-container {
-            position: fixed;
-            top: 1.5rem;
-            right: 1.5rem;
-            z-index: 9999;
-        }
-        
-        .toast {
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        
-        @media (max-width: 992px) {
-            .sidebar {
-                transform: translateX(-100%);
-                z-index: 1002;
-                pointer-events: none;
-            }
-            
-            .sidebar.show {
-                transform: translateX(0);
-                z-index: 1002;
-                pointer-events: auto;
-            }
-            
-            .main-content {
-                margin-left: 0;
-                padding: 4rem 1rem 1rem;
-            }
-            
-            .mobile-toggle {
-                display: flex;
-            }
-            
-            .overlay.show {
-                display: block;
-            }
-            
-            .page-header {
-                padding: 1rem;
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .table-responsive {
-                border-radius: 8px;
-            }
-        }
-        
         @media (max-width: 768px) {
             .opsi-card {
                 padding: 0.75rem;
             }
-            
-            .card-body {
-                padding: 1rem;
-            }
-            
-            .btn {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-            
-            .btn:last-child {
-                margin-bottom: 0;
-            }
-            
-            .page-header .btn {
-                width: auto;
-            }
-        }
-        
-        .animate-fade-in {
-            animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
         }
         
         .question-box {
@@ -1096,19 +675,6 @@ if (isset($_SESSION['import_message'])) {
             text-decoration: none;
         }
         
-        .action-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            transition: all 0.2s ease;
-            font-size: 1.1rem;
-            text-decoration: none;
-        }
-        
         .action-btn-label {
             font-size: 0.65rem;
             font-weight: 500;
@@ -1122,67 +688,65 @@ if (isset($_SESSION['import_message'])) {
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         
-        .action-btn-edit {
-            background: #fef3c7;
-            color: #d97706 !important;
+        .delete-icon-wrapper {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: bounce 0.5s ease;
         }
         
-        .action-btn-edit:hover {
-            background: #fde68a;
-            color: #b45309 !important;
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
         }
         
-        .action-btn-delete {
-            background: #f3f4f6;
-            color: #6b7280 !important;
+        .delete-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
         }
         
-        .action-btn-delete:hover {
-            background: #fee2e2;
-            color: #dc2626 !important;
+        .delete-icon i {
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .btn-batal {
+            background: #f1f5f9;
+            border: none;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        
+        .btn-batal:hover {
+            background: #e2e8f0;
+            color: #475569;
+        }
+        
+        .btn-hapus {
+            border: none;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            transition: all 0.2s;
+        }
+        
+        .btn-hapus:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
         }
     </style>
 </head>
 <body>
-    <button class="mobile-toggle" onclick="toggleSidebar()">
-        <i class="bi bi-list"></i>
-    </button>
-    
-    <div class="overlay" onclick="toggleSidebar()"></div>
-
-    <div class="sidebar">
-        <div class="sidebar-brand text-center">
-            <div class="school-logo mb-2">
-                <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
-                    <img src="../uploads/<?= $sekolah['logo'] ?>" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
-                <?php else: ?>
-                    <i class="bi bi-mortarboard-fill" style="font-size: 1.8rem;"></i>
-                <?php endif; ?>
-            </div>
-            <div class="text-white fw-bold" style="font-size: 0.85rem;"><?= htmlspecialchars($sekolah['nama_sekolah']) ?></div>
-            <h5 class="mt-2"><i class="bi bi-gear me-1"></i>Admin Panel</h5>
-        </div>
-        <div class="sidebar-menu">
-            <a href="index.php"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
-            <a href="tambah_soal.php" class="active"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
-            <a href="bank_soal.php"><i class="bi bi-database-fill"></i> Bank Soal Global</a>
-            <a href="import_soal.php"><i class="bi bi-upload me-2"></i>Import Massal</a>
-            <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
-            <a href="analytics.php"><i class="bi bi-graph-up"></i> Analytics</a>
-            <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
-            <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
-            <a href="kelola_kelas.php"><i class="bi bi-diagram-3-fill"></i> Kelola Kelas</a>
-            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
-            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
-            <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
-            <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
-            <a href="backup_restore.php"><i class="bi bi-cloud-arrow-up-fill"></i> Backup & Restore</a>
-            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
-            <?php endif; ?>
-            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
-            <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
-        </div>
-    </div>
+    <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>
 
     <div class="main-content">
         <div class="page-header animate-fade-in">
@@ -1758,64 +1322,7 @@ if (isset($_SESSION['import_message'])) {
             </div>
         </div>
     </div>
-    
-    <style>
-        .delete-icon-wrapper {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto;
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: bounce 0.5s ease;
-        }
-        
-        @keyframes bounce {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-        
-        .delete-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
-        }
-        
-        .delete-icon i {
-            font-size: 1.5rem;
-            color: white;
-        }
-        
-        .btn-batal {
-            background: #f1f5f9;
-            border: none;
-            color: #64748b;
-            transition: all 0.2s;
-        }
-        
-        .btn-batal:hover {
-            background: #e2e8f0;
-            color: #475569;
-        }
-        
-        .btn-hapus {
-            border: none;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-            transition: all 0.2s;
-        }
-        
-        .btn-hapus:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
-        }
-    </style>
+
 
     <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
     <script>

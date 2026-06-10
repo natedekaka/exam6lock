@@ -5,6 +5,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Reset exam code setiap masuk halaman ujian — biar gak persist antar ujian
+unset($_SESSION['exam_code_verified']);
+
 require_once 'config/database.php';
 require_once 'config/init_sekolah.php';
 
@@ -146,6 +149,89 @@ if ($ujian['status'] !== 'aktif') {
     exit;
 }
 
+// ---- Cek apakah sudah pernah dikerjakan (untuk siswa login) ----
+if (isset($_SESSION['siswa_id']) && isset($_SESSION['siswa_nis'])) {
+    $check_done = $conn->prepare("SELECT id, total_skor, submitted_at FROM hasil_ujian WHERE id_ujian = ? AND nis = ? LIMIT 1");
+    $check_done->bind_param("is", $id_ujian, $_SESSION['siswa_nis']);
+    $check_done->execute();
+    $done_res = $check_done->get_result();
+    if ($done_res->num_rows > 0) {
+        $done_data = $done_res->fetch_assoc();
+
+        // Cek apakah ada izin remedi — kalau ada, biarkan lanjut
+        $cek_remedi = $conn->prepare("SELECT id FROM izin_remedi WHERE id_ujian = ? AND nis = ? LIMIT 1");
+        $cek_remedi->bind_param("is", $id_ujian, $_SESSION['siswa_nis']);
+        $cek_remedi->execute();
+        $ada_remedi = $cek_remedi->get_result()->num_rows > 0;
+        $cek_remedi->close();
+
+        if (!$ada_remedi) {
+        // Hitung total soal untuk display
+        $q_total = $conn->prepare("SELECT COUNT(*) FROM soal WHERE id_ujian = ?");
+        $q_total->bind_param("i", $id_ujian);
+        $q_total->execute();
+        $q_total->bind_result($total_soal);
+        $q_total->fetch();
+        $q_total->close();
+        ?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudah Mengerjakan</title>
+    <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <link href="vendor/fonts/poppins.css" rel="stylesheet">
+    <style>
+        * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); max-width: 480px; }
+        .nilai-angka { font-size: 2.5rem; font-weight: 700; color: #667eea; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-7">
+                <div class="card p-5 text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    <h3 class="mt-4 fw-bold">Anda sudah menyelesaikan ujian ini</h3>
+                    <p class="text-muted mb-0"><?= htmlspecialchars($ujian['judul_ujian']) ?></p>
+                    <?php if ($done_data['submitted_at']): ?>
+                    <p class="text-muted small">Selesai: <?= date('d M Y H:i', strtotime($done_data['submitted_at'])) ?></p>
+                    <?php endif; ?>
+
+                    <?php if ($done_data['total_skor'] !== null): ?>
+                    <hr>
+                    <p class="mb-1 text-muted">Nilai Anda</p>
+                    <div class="nilai-angka"><?= (int)$done_data['total_skor'] ?></div>
+                    <p class="text-muted">dari <?= $total_soal ?> soal</p>
+                    <hr>
+                    <?php endif; ?>
+
+                    <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+                        <a href="siswa/dashboard.php" class="btn btn-primary btn-lg">
+                            <i class="bi bi-speedometer2 me-2"></i>Kembali ke Dashboard
+                        </a>
+                        <a href="riwayat.php?nis=<?= urlencode($_SESSION['siswa_nis']) ?>" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-clock-history me-2"></i>Lihat Nilai Saya
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+        <?php
+        exit;
+    }
+    $check_done->close();
+    }
+}
+// ---- End cek sudah dikerjakan ----
+
 $stmt = $conn->prepare("SELECT * FROM soal WHERE id_ujian = ?");
 $stmt->bind_param("i", $id_ujian);
 $stmt->execute();
@@ -222,11 +308,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             $check->bind_param("is", $id_ujian, $nis);
             $check->execute();
             $check_result = $check->get_result();
+            $has_existing = $check_result->num_rows > 0;
             
-            if ($check_result->num_rows > 0) {
+            // Cek izin remedi kalau sudah pernah submit
+            $allow_submit = true;
+            if ($has_existing) {
+                $cek_remedi_submit = $conn->prepare("SELECT id FROM izin_remedi WHERE id_ujian = ? AND nis = ? LIMIT 1");
+                $cek_remedi_submit->bind_param("is", $id_ujian, $nis);
+                $cek_remedi_submit->execute();
+                $allow_submit = $cek_remedi_submit->get_result()->num_rows > 0;
+                $cek_remedi_submit->close();
+            }
+            
+            if ($has_existing && !$allow_submit) {
                 $conn->query("DO RELEASE_LOCK('$lock_name')");
                 $conn->rollback();
-                $message = "Anda sudah submit ujian ini!";
+                $message = "Anda sudah submit ujian ini! Tidak ada izin remedi.";
                 $message_type = 'warning';
             } else {
                 $check->close();

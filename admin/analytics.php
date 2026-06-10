@@ -420,98 +420,6 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel' && $selected_ujian > 0
     <link href="../vendor/fonts/inter.css" rel="stylesheet">
     <script src="../vendor/chart.js/chart.umd.min.js"></script>
     <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --secondary: #64748b;
-            --success: #10b981;
-            --danger: #ef4444;
-            --dark: #1e293b;
-            --light: #f8fafc;
-            --border: #e2e8f0;
-            --sidebar-width: 260px;
-        }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f0f2f5;
-            color: #2c3e50;
-            min-height: 100vh;
-        }
-        
-        .sidebar { 
-            width: var(--sidebar-width); 
-            min-height: 100vh; 
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-        }
-        
-        .sidebar-brand { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-brand h5 { color: #fff; font-weight: 600; margin: 0; }
-        
-        .school-logo {
-            width: 55px;
-            height: 55px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-        }
-        
-        .sidebar a { 
-            color: rgba(255,255,255,0.7); 
-            text-decoration: none; 
-            padding: 0.875rem 1.5rem; 
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            transition: all 0.3s;
-            border-left: 3px solid transparent;
-        }
-        
-        .sidebar a:hover { background: rgba(255,255,255,0.05); color: #fff; }
-        .sidebar a.active { background: rgba(79, 70, 229, 0.2); color: #fff; border-left-color: var(--primary); }
-        
-        .main-content { margin-left: var(--sidebar-width); padding: 2rem; transition: margin-left 0.3s ease; width: calc(100% - var(--sidebar-width)); box-sizing: border-box; min-width: 0; z-index: 1; }
-        
-        @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.show { transform: translateX(0); }
-            .main-content { margin-left: 0; width: 100%; }
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1.5rem 2rem;
-            border-radius: 12px;
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .header h1 { font-size: 1.5rem; font-weight: 600; margin: 0; }
-        
-        .header-actions a {
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            transition: all 0.3s;
-            font-size: 0.9rem;
-        }
-        
-        .header-actions a:hover { background: rgba(255,255,255,0.2); }
-        
         .filter-section {
             background: white;
             padding: 1.5rem;
@@ -538,25 +446,6 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel' && $selected_ujian > 0
         
         .filter-section input[type="number"] {
             min-width: 80px;
-        }
-        
-        .btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
         
         .stats-grid {
@@ -647,10 +536,6 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel' && $selected_ujian > 0
             margin-bottom: 1rem;
         }
         
-        .table-responsive {
-            overflow-x: auto;
-        }
-        
         table {
             width: 100%;
             border-collapse: collapse;
@@ -668,14 +553,6 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel' && $selected_ujian > 0
             color: #64748b;
             font-size: 0.85rem;
             text-transform: uppercase;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
         }
         
         .badge-primary { background: #e0e7ff; color: #667eea; }
@@ -702,62 +579,25 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel' && $selected_ujian > 0
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
         
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: #94a3b8;
-        }
-        
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-        
         .fw-semibold { font-weight: 600; }
-        
-        .d-flex { display: flex; }
-        .align-items-center { align-items: center; }
-        .gap-2 { gap: 0.5rem; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="sidebar-brand text-center">
-            <div class="school-logo mb-2">
-                <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
-                    <img src="../uploads/<?= htmlspecialchars($sekolah['logo']) ?>" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
-                <?php else: ?>
-                    <i class="bi bi-mortarboard-fill" style="font-size: 1.8rem;"></i>
-                <?php endif; ?>
-            </div>
-            <div class="text-white fw-bold" style="font-size: 0.85rem;"><?= htmlspecialchars($sekolah['nama_sekolah']) ?></div>
-            <h5 class="mt-2"><i class="bi bi-graph-up me-1"></i>Analytics</h5>
-        </div>
-        <div class="sidebar-menu">
-            <a href="index.php"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
-            <a href="tambah_soal.php"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
-            <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
-            <a href="analytics.php" class="active"><i class="bi bi-graph-up"></i> Analytics</a>
-            <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
-            <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
-            <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
-            <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
-            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
-            <?php endif; ?>
-            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
-            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
-            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
-            <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
-        </div>
-    </div>
+    <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>
     
     <div class="main-content">
-        <div class="header">
-            <h1><i class="bi bi-bar-chart-line me-2"></i>Analytics Dashboard</h1>
-            <div class="header-actions">
-                <a href="index.php"><i class="bi bi-house"></i> Home</a>
-                <a href="rekap_nilai.php"><i class="bi bi-table"></i> Rekap Nilai</a>
-                <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor</a>
+        <div class="page-header-with-breadcrumb">
+            <ul class="breadcrumb-custom">
+                <li><a href="index.php"><i class="bi bi-house"></i> Dashboard</a></li>
+                <li>Nilai &amp; Analisis</li>
+                <li class="active">Analytics</li>
+            </ul>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h3><i class="bi bi-bar-chart-line"></i> Analytics Dashboard</h3>
+                <div class="d-flex gap-2">
+                    <a href="rekap_nilai.php" class="btn btn-sm btn-outline-primary"><i class="bi bi-table"></i> Rekap Nilai</a>
+                    <a href="monitor_ujian.php" class="btn btn-sm btn-outline-primary"><i class="bi bi-display"></i> Monitor</a>
+                </div>
             </div>
         </div>
         

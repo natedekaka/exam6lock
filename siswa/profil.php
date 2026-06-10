@@ -131,24 +131,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Profil Saya - <?= htmlspecialchars($sekolah['nama_sekolah']) ?></title>
     <link href="../vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <link href="assets/css/siswa.css" rel="stylesheet">
     <style>
-        body {
-            background: linear-gradient(135deg, <?= $sekolah['warna_primer'] ?> 0%, <?= $sekolah['warna_sekunder'] ?> 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            padding: 30px 0;
-        }
         .profile-card {
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
             border-radius: 20px;
             box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
             overflow: hidden;
-            animation: slideUp 0.5s ease-out;
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
+            margin: 1.5rem auto;
+            max-width: 800px;
         }
         .profile-header {
             background: linear-gradient(135deg, <?= $sekolah['warna_primer'] ?> 0%, <?= $sekolah['warna_sekunder'] ?> 100%);
@@ -177,7 +169,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-color: <?= $sekolah['warna_primer'] ?>;
             box-shadow: 0 0 0 4px <?= $sekolah['warna_primer'] ?>20;
         }
-        .form-label { font-weight: 500; font-size: 0.9rem; color: #444; }
         .btn-primary {
             background: <?= $sekolah['warna_primer'] ?>;
             border: none;
@@ -192,11 +183,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 8px 20px <?= $sekolah['warna_primer'] ?>40;
         }
         .alert { border-radius: 12px; }
-        .nav-link { color: <?= $sekolah['warna_primer'] ?>; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <?php require 'partials/navbar.php'; ?>
+    <div class="dashboard-container">
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="profile-card">

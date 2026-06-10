@@ -171,48 +171,6 @@ if (isset($_SESSION['import_message'])) {
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link href="../vendor/fonts/inter.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --secondary: #64748b;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --dark: #1e293b;
-            --border: #e2e8f0;
-        }
-        * { font-family: 'Inter', sans-serif; }
-        body { background-color: #f1f5f9; min-height: 100vh; }
-        
-        .sidebar { 
-            width: 260px; min-height: 100vh; 
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            position: fixed; left: 0; top: 0; z-index: 1000;
-        }
-        .sidebar-brand { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-brand h5 { color: #fff; font-weight: 600; margin: 0; }
-        .school-logo { width: 55px; height: 55px; background: rgba(255,255,255,0.15); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
-        .sidebar a { color: rgba(255,255,255,0.7); text-decoration: none; padding: 0.875rem 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s; border-left: 3px solid transparent; }
-        .sidebar a:hover { background: rgba(255,255,255,0.05); color: #fff; }
-        .sidebar a.active { background: rgba(79, 70, 229, 0.2); color: #fff; border-left-color: var(--primary); }
-        
-        .main-content { margin-left: 260px; padding: 2rem; }
-        
-        .page-header { background: #fff; border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .page-header h3 { margin: 0; font-weight: 600; color: var(--dark); }
-        
-        .card { border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
-        .card-header { background: #fff; border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem; font-weight: 600; color: var(--dark); }
-        .card-body { padding: 1.5rem; }
-        
-        .form-label { font-weight: 500; color: var(--dark); margin-bottom: 0.5rem; }
-        .form-control, .form-select { border: 1px solid var(--border); border-radius: 8px; padding: 0.625rem 0.875rem; }
-        .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-        
-        .btn { border-radius: 8px; padding: 0.625rem 1.25rem; font-weight: 500; }
-        .btn-primary { background: var(--primary); border-color: var(--primary); }
-        .btn-primary:hover { background: var(--primary-hover); }
-        
         .file-drop-zone {
             border: 2px dashed var(--border);
             border-radius: 12px;
@@ -239,42 +197,10 @@ if (isset($_SESSION['import_message'])) {
         }
         
         .alert { border-radius: 8px; }
-        
-        @media (max-width: 992px) {
-            .sidebar { transform: translateX(-100%); }
-            .main-content { margin-left: 0; padding: 4rem 1rem 1rem; }
-        }
-        
-        .animate-fade-in { animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="sidebar-brand text-center">
-            <div class="school-logo mb-2">
-                <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
-                    <img src="../uploads/<?= $sekolah['logo'] ?>" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
-                <?php else: ?>
-                    <i class="bi bi-mortarboard-fill" style="font-size: 1.8rem;"></i>
-                <?php endif; ?>
-            </div>
-            <div class="text-white fw-bold" style="font-size: 0.85rem;"><?= htmlspecialchars($sekolah['nama_sekolah']) ?></div>
-            <h5 class="mt-2"><i class="bi bi-gear me-1"></i>Admin Panel</h5>
-        </div>
-        <div class="sidebar-menu">
-            <a href="index.php"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
-            <a href="tambah_soal.php"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
-            <a href="import_soal.php" class="active"><i class="bi bi-upload me-2"></i>Import Massal</a>
-            <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
-            <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
-            <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
-            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
-            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
-            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
-            <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
-        </div>
-    </div>
+    <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>
 
     <div class="main-content">
         <div class="page-header animate-fade-in">

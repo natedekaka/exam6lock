@@ -12,8 +12,18 @@ $sekolah = getKonfigurasiSekolah($conn);
 $message = '';
 $message_type = '';
 
+// Handle redirect after login
+$redirect = '';
+if (isset($_GET['redirect']) && !empty($_GET['redirect'])) {
+    $r = $_GET['redirect'];
+    // Only allow relative paths (no external URLs)
+    if (strpos($r, 'http') !== 0 && strpos($r, '//') !== 0) {
+        $redirect = $r;
+    }
+}
+
 if (isset($_SESSION['siswa_id'])) {
-    header('Location: index.php');
+    header('Location: ' . ($redirect ?: 'dashboard.php'));
     exit;
 }
 
@@ -29,7 +39,11 @@ if (isset($_COOKIE['student_remember'])) {
         $_SESSION['siswa_nama'] = $siswa['nama_lengkap'];
         $_SESSION['siswa_kelas'] = $siswa['kelas'];
         $_SESSION['siswa_jurusan_id'] = $siswa['jurusan_id'];
-        header('Location: ../index.php');
+        if ($siswa['password_change_required']) {
+            header('Location: ganti_password.php');
+            exit;
+        }
+        header('Location: ' . ($redirect ?: 'dashboard.php'));
         exit;
     }
     $stmt->close();
@@ -67,7 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $stmt->close();
-                header('Location: ../index.php');
+
+                // Redirect to change password if required
+                if ($siswa['password_change_required']) {
+                    header('Location: ganti_password.php');
+                    exit;
+                }
+
+                header('Location: ' . ($redirect ?: 'dashboard.php'));
                 exit;
             } else {
                 $message = 'Password salah!';

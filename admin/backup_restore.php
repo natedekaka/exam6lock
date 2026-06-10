@@ -391,100 +391,11 @@ function format_bytes($bytes, $precision = 2) {
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link href="../vendor/fonts/inter.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --secondary: #64748b;
-            --success: #10b981;
-            --danger: #ef4444;
-            --dark: #1e293b;
-            --light: #f8fafc;
-            --border: #e2e8f0;
-            --sidebar-width: 260px;
-        }
-        * { font-family: 'Inter', sans-serif; }
-        body { background-color: #f1f5f9; min-height: 100vh; }
-        .sidebar { width: var(--sidebar-width); min-height: 100vh; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); position: fixed; left: 0; top: 0; z-index: 1000; transition: transform 0.3s ease; }
-        .sidebar-brand { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-brand h5 { color: #fff; font-weight: 600; margin: 0; }
-        .school-logo { width: 55px; height: 55px; background: rgba(255,255,255,0.15); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
-        .sidebar a { color: rgba(255,255,255,0.7); text-decoration: none; padding: 0.875rem 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s ease; border-left: 3px solid transparent; font-size: 0.9375rem; }
-        .sidebar a:hover { background: rgba(255,255,255,0.05); color: #fff; }
-        .sidebar a.active { background: rgba(79, 70, 229, 0.2); color: #fff; border-left-color: var(--primary); }
-        .main-content { margin-left: var(--sidebar-width); padding: 2rem; transition: margin-left 0.3s ease; width: calc(100% - var(--sidebar-width)); box-sizing: border-box; min-width: 0; }
-        .page-header { background: #fff; border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-        .page-header h3 { margin: 0; font-weight: 600; color: var(--dark); }
-        .card { border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
-        .card-header { background: #fff; border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem; font-weight: 600; color: var(--dark); }
-        .card-body { padding: 1.5rem; }
-        .form-control, .form-select { border: 1px solid var(--border); border-radius: 8px; padding: 0.625rem 0.875rem; font-size: 0.9375rem; }
-        .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-        .btn { border-radius: 8px; padding: 0.625rem 1.25rem; font-weight: 500; transition: all 0.2s ease; white-space: nowrap; }
-        .btn-primary { background: var(--primary); border-color: var(--primary); }
-        .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
-        .btn-success { background: var(--success); border-color: var(--success); }
-        .btn-danger { background: var(--danger); border-color: var(--danger); }
-        .table { table-layout: auto; width: 100%; }
-        .table thead th { background: #f8fafc; border-bottom: 2px solid var(--border); color: var(--secondary); font-weight: 600; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 1rem; white-space: nowrap; }
-        .table tbody td { padding: 1rem; vertical-align: middle; border-bottom: 1px solid var(--border); }
-        .table tbody tr:hover { background: #f8fafc; }
-        .badge { font-weight: 500; padding: 0.375rem 0.75rem; border-radius: 6px; font-size: 0.75rem; }
-        .mobile-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 1001; background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 0.625rem; font-size: 1.25rem; }
-        .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
-        .animate-fade-in { animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .warning-box { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-        @media (max-width: 992px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.show { transform: translateX(0); }
-            .main-content { margin-left: 0; width: 100%; padding: 4rem 1rem 1rem; }
-            .mobile-toggle { display: flex; }
-            .overlay.show { display: block; }
-        }
-        @media (max-width: 576px) {
-            .page-header { padding: 1rem; flex-direction: column; align-items: flex-start; }
-            .card-body { padding: 1rem; }
-            .btn { width: 100%; margin-bottom: 0.5rem; }
-        }
     </style>
 </head>
 <body>
-    <button class="mobile-toggle" onclick="toggleSidebar()">
-        <i class="bi bi-list"></i>
-    </button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
-
-    <div class="sidebar">
-        <div class="sidebar-brand text-center">
-            <div class="school-logo mb-2">
-                <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
-                    <img src="../uploads/<?= $sekolah['logo'] ?>" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
-                <?php else: ?>
-                    <i class="bi bi-mortarboard-fill" style="font-size: 1.8rem;"></i>
-                <?php endif; ?>
-            </div>
-            <div class="text-white fw-bold" style="font-size: 0.85rem;"><?= htmlspecialchars($sekolah['nama_sekolah']) ?></div>
-            <h5 class="mt-2"><i class="bi bi-gear me-1"></i>Admin Panel</h5>
-        </div>
-        <div class="sidebar-menu">
-            <a href="index.php"><i class="bi bi-grid-1x2-fill"></i> Manajemen Ujian</a>
-            <a href="tambah_soal.php"><i class="bi bi-question-circle-fill"></i> Bank Soal</a>
-            <a href="bank_soal.php"><i class="bi bi-database-fill"></i> Bank Soal Global</a>
-            <a href="rekap_nilai.php"><i class="bi bi-bar-chart-fill"></i> Rekap Nilai</a>
-            <a href="analytics.php"><i class="bi bi-graph-up"></i> Analytics</a>
-            <a href="monitor_ujian.php"><i class="bi bi-display"></i> Monitor Ujian</a>
-            <a href="profil_sekolah.php"><i class="bi bi-building"></i> Profil Sekolah</a>
-            <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
-            <a href="manage_users.php"><i class="bi bi-people-fill"></i> Kelola Admin</a>
-            <a href="backup_restore.php" class="active"><i class="bi bi-cloud-arrow-up-fill"></i> Backup & Restore</a>
-            <a href="audit_log.php"><i class="bi bi-journal-text"></i> Audit Log</a>
-            <?php endif; ?>
-            <a href="pengumuman.php"><i class="bi bi-megaphone-fill"></i> Pengumuman</a>
-            <a href="izin_remedi.php"><i class="bi bi-arrow-repeat"></i> Izin Remedi</a>
-            <a href="ganti_password.php"><i class="bi bi-key-fill"></i> Ganti Password</a>
-            <a href="logout.php" class="text-warning mt-3"><i class="bi bi-box-arrow-right"></i> Logout (<?= htmlspecialchars($_SESSION['admin_username']) ?>)</a>
-        </div>
-    </div>
+    <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>
 
     <div class="main-content">
         <div class="page-header animate-fade-in">
