@@ -61,6 +61,9 @@ $avatar_char = strtoupper(substr($admin_nama, 0, 1));
 			<a href="monitor_ujian.php" class="<?= $active_page === 'monitor_ujian.php' ? 'active' : '' ?>">
 				<i class="bi bi-display"></i> Monitor Ujian
 			</a>
+			<a href="kartu_peserta.php" class="<?= $active_page === 'kartu_peserta.php' ? 'active' : '' ?>">
+				<i class="bi bi-card-text"></i> Kartu Peserta
+			</a>
 		</div>
 
 		<!-- Data Master -->
