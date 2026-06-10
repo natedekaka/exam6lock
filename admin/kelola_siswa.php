@@ -60,11 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message_type = 'danger';
                 } else {
                     $hashed = password_hash($nis, PASSWORD_DEFAULT); // default password = NIS
-                    $stmt = $conn->prepare("INSERT INTO siswa (nis, nama_lengkap, password, password_change_required, kelas, jurusan_id, email) VALUES (?, ?, ?, 1, ?, ?, ?)");
+                    $stmt = $conn->prepare("INSERT INTO siswa (nis, nama_lengkap, password, password_change_required, kelas, jurusan_id, email) VALUES (?, ?, ?, 0, ?, ?, ?)");
                     $stmt->bind_param("ssssis", $nis, $nama_lengkap, $hashed, $kelas, $jurusan_id, $email);
                     if ($stmt->execute()) {
                         $new_id = $stmt->insert_id;
-                        $message = 'Siswa berhasil ditambahkan. Password default: NIS. Siswa wajib ganti password saat login pertama.';
+                        $message = 'Siswa berhasil ditambahkan. Password default: NIS (sama dengan username).';
                         $message_type = 'success';
                         logAudit($conn, $_SESSION['admin_id'], $_SESSION['admin_username'], 'create', 'siswa', $new_id, "Tambah siswa: $nis - $nama_lengkap");
                     }
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $res = $stmt->get_result();
         if ($row = $res->fetch_assoc()) {
             $new_hash = password_hash($row['nis'], PASSWORD_DEFAULT);
-            $stmt2 = $conn->prepare("UPDATE siswa SET password=?, password_change_required=1, remember_token=NULL WHERE id=?");
+            $stmt2 = $conn->prepare("UPDATE siswa SET password=?, password_change_required=0, remember_token=NULL WHERE id=?");
             $stmt2->bind_param("si", $new_hash, $id);
             if ($stmt2->execute()) {
                 $message = 'Password siswa direset ke NIS.';
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $ck->close();
 
                         $hashed = password_hash($nis, PASSWORD_DEFAULT);
-                        $stmt = $conn->prepare("INSERT INTO siswa (nis, nama_lengkap, password, password_change_required, kelas, jurusan_id, email) VALUES (?, ?, ?, 1, ?, ?, ?)");
+                        $stmt = $conn->prepare("INSERT INTO siswa (nis, nama_lengkap, password, password_change_required, kelas, jurusan_id, email) VALUES (?, ?, ?, 0, ?, ?, ?)");
                         $stmt->bind_param("ssssis", $nis, $nama, $hashed, $kelas, $jurusan_id, $email);
                         if ($stmt->execute()) $imported++;
                         else $skipped++;
@@ -410,9 +410,6 @@ $kelas_list = $conn->query("SELECT * FROM kelas ORDER BY nama_kelas ASC");
                                 <span class="badge bg-success">Aktif</span>
                                 <?php else: ?>
                                 <span class="badge bg-danger">Nonaktif</span>
-                                <?php endif; ?>
-                                <?php if ($s['password_change_required']): ?>
-                                <span class="badge bg-warning text-dark">Ganti Password</span>
                                 <?php endif; ?>
                             </td>
                             <td>

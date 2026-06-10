@@ -10,61 +10,20 @@ require_once '../config/init_sekolah.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
-$selected_ujian = isset($_GET['ujian']) ? (int)$_GET['ujian'] : 0;
+$filter_kelas = isset($_GET['kelas']) ? trim($_GET['kelas']) : '';
 
-// Ambil daftar ujian untuk dropdown
-$ujian_list = $conn->query("SELECT id, judul_ujian FROM ujian ORDER BY judul_ujian");
-
-$has_ujian_kelas = $conn->query("SHOW TABLES LIKE 'ujian_kelas'")->num_rows > 0;
-$has_kelas_table = $conn->query("SHOW TABLES LIKE 'kelas'")->num_rows > 0;
+$kelas_list = $conn->query("SELECT DISTINCT kelas FROM siswa WHERE is_active = 1 AND kelas IS NOT NULL AND kelas != '' ORDER BY kelas");
 
 $siswa_list = [];
-$judul_ujian = '';
-$soal_count = 0;
-$durasi = 0;
-
-if ($selected_ujian > 0) {
-    $stmt_u = $conn->prepare("SELECT judul_ujian, waktu_tersedia FROM ujian WHERE id = ?");
-    $stmt_u->bind_param("i", $selected_ujian);
-    $stmt_u->execute();
-    $ujian_info = $stmt_u->get_result()->fetch_assoc();
-    $stmt_u->close();
-
-    if ($ujian_info) {
-        $judul_ujian = $ujian_info['judul_ujian'];
-        $durasi = (int)$ujian_info['waktu_tersedia'];
-    }
-
-    $st = $conn->prepare("SELECT COUNT(*) as total FROM soal WHERE id_ujian = ?");
-    $st->bind_param("i", $selected_ujian);
-    $st->execute();
-    $soal_count = (int)$st->get_result()->fetch_assoc()['total'];
-    $st->close();
-
-    $kelas_filter = [];
-    if ($has_ujian_kelas && $has_kelas_table) {
-        $st_k = $conn->prepare("SELECT k.nama_kelas FROM ujian_kelas uk JOIN kelas k ON uk.id_kelas = k.id WHERE uk.id_ujian = ?");
-        $st_k->bind_param("i", $selected_ujian);
-        $st_k->execute();
-        $res_k = $st_k->get_result();
-        while ($rk = $res_k->fetch_assoc()) {
-            $kelas_filter[] = $rk['nama_kelas'];
-        }
-        $st_k->close();
-    }
-
-    if (!empty($kelas_filter)) {
-        $placeholders = implode(',', array_fill(0, count($kelas_filter), '?'));
-        $types = str_repeat('s', count($kelas_filter));
-        $st_s = $conn->prepare("SELECT nis, nama_lengkap, kelas FROM siswa WHERE is_active = 1 AND kelas IN ($placeholders) ORDER BY kelas, nama_lengkap");
-        $st_s->bind_param($types, ...$kelas_filter);
-    } else {
-        $st_s = $conn->prepare("SELECT nis, nama_lengkap, kelas FROM siswa WHERE is_active = 1 ORDER BY kelas, nama_lengkap");
-    }
-    $st_s->execute();
-    $siswa_list = $st_s->get_result()->fetch_all(MYSQLI_ASSOC);
-    $st_s->close();
+if (!empty($filter_kelas)) {
+    $st = $conn->prepare("SELECT nis, nama_lengkap, kelas FROM siswa WHERE is_active = 1 AND kelas = ? ORDER BY nama_lengkap");
+    $st->bind_param("s", $filter_kelas);
+} else {
+    $st = $conn->prepare("SELECT nis, nama_lengkap, kelas FROM siswa WHERE is_active = 1 ORDER BY kelas, nama_lengkap");
 }
+$st->execute();
+$siswa_list = $st->get_result()->fetch_all(MYSQLI_ASSOC);
+$st->close();
 
 $active_page = basename(__FILE__);
 ?>
@@ -81,7 +40,6 @@ $active_page = basename(__FILE__);
     <style>
         body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; }
 
-        /* Kartu layout — untuk layar */
         .kartu-wrapper {
             display: flex;
             flex-wrap: wrap;
@@ -141,16 +99,6 @@ $active_page = basename(__FILE__);
         .kartu-body .info-label { color: #6c757d; }
         .kartu-body .info-value { font-weight: 600; color: #1a1a2e; }
 
-        .kartu-exam-info {
-            margin-top: 0.75rem;
-            padding: 0.6rem 0.75rem;
-            background: #f8f9fa;
-            border-radius: 10px;
-            font-size: 0.78rem;
-        }
-        .kartu-exam-info .exam-title { font-weight: 600; font-size: 0.85rem; }
-        .kartu-exam-info .exam-meta { color: #6c757d; margin-top: 0.25rem; }
-
         .kartu-footer {
             text-align: center;
             padding: 0 1rem 1rem;
@@ -158,15 +106,10 @@ $active_page = basename(__FILE__);
             color: #adb5bd;
         }
 
-        /* Print */
         @media print {
             body { background: white !important; margin: 0; padding: 0.3in; }
             .no-print { display: none !important; }
-            .kartu-wrapper {
-                display: block;
-                padding: 0;
-                gap: 0;
-            }
+            .kartu-wrapper { display: block; padding: 0; gap: 0; }
             .kartu-item {
                 box-shadow: none !important;
                 border: 1.5px solid #dee2e6;
@@ -177,13 +120,12 @@ $active_page = basename(__FILE__);
             }
             .kartu-item:last-child { page-break-after: auto; }
             .kartu-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .kartu-exam-info { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             @page { margin: 0.3in; }
         }
     </style>
 </head>
 <body>
-    <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>
+    <?php require 'partials/sidebar.php'; ?>
 
     <div class="main-content">
         <div class="page-header animate-fade-in">
@@ -194,7 +136,7 @@ $active_page = basename(__FILE__);
                 </ol>
             </nav>
             <div class="d-flex align-items-center gap-3">
-                <h4 class="fw-bold mb-0"><i class="bi bi-card-text me-2"></i>Kartu Peserta Ujian</h4>
+                <h4 class="fw-bold mb-0"><i class="bi bi-card-text me-2"></i>Kartu Peserta</h4>
             </div>
         </div>
 
@@ -202,13 +144,13 @@ $active_page = basename(__FILE__);
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
                     <form method="GET" class="row g-3 align-items-end">
-                        <div class="col-md-5">
-                            <label class="form-label fw-medium">Pilih Ujian</label>
-                            <select name="ujian" class="form-select" onchange="this.form.submit()">
-                                <option value="">-- Pilih Ujian --</option>
-                                <?php while ($u = $ujian_list->fetch_assoc()): ?>
-                                <option value="<?= $u['id'] ?>" <?= $selected_ujian == $u['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($u['judul_ujian']) ?>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Filter Kelas</label>
+                            <select name="kelas" class="form-select" onchange="this.form.submit()">
+                                <option value="">-- Semua Kelas --</option>
+                                <?php while ($k = $kelas_list->fetch_assoc()): ?>
+                                <option value="<?= htmlspecialchars($k['kelas']) ?>" <?= $filter_kelas === $k['kelas'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($k['kelas']) ?>
                                 </option>
                                 <?php endwhile; ?>
                             </select>
@@ -219,8 +161,8 @@ $active_page = basename(__FILE__);
                                 <span class="badge bg-primary fs-6"><?= count($siswa_list) ?> peserta</span>
                             </div>
                         </div>
-                        <div class="col-md-4 text-end">
-                            <?php if ($selected_ujian > 0 && !empty($siswa_list)): ?>
+                        <div class="col-md-5 text-end">
+                            <?php if (!empty($siswa_list)): ?>
                             <button type="button" class="btn btn-primary no-print" onclick="window.print()">
                                 <i class="bi bi-printer me-2"></i>Cetak Semua (<?= count($siswa_list) ?>)
                             </button>
@@ -230,65 +172,50 @@ $active_page = basename(__FILE__);
                 </div>
             </div>
 
-            <?php if ($selected_ujian > 0): ?>
-                <?php if (empty($siswa_list)): ?>
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-2"></i>Tidak ada peserta untuk ujian ini.
-                </div>
-                <?php else: ?>
-                <div class="text-center text-muted small mb-3 no-print">
-                    <i class="bi bi-printer me-1"></i>Klik <strong>Cetak Semua</strong> untuk mencetak <?= count($siswa_list) ?> kartu peserta sekaligus
-                </div>
+            <?php if (empty($siswa_list)): ?>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Tidak ada siswa aktif ditemukan.
+            </div>
+            <?php else: ?>
+            <div class="text-center text-muted small mb-3 no-print">
+                <i class="bi bi-printer me-1"></i>Klik <strong>Cetak Semua</strong> untuk mencetak <?= count($siswa_list) ?> kartu peserta sekaligus
+            </div>
 
-                <div class="kartu-wrapper">
-                    <?php foreach ($siswa_list as $siswa): ?>
-                    <div class="kartu-item">
-                        <div class="kartu-header">
-                            <div class="logo-wrap">
-                                <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
-                                    <img src="../uploads/<?= $sekolah['logo'] ?>" alt="Logo">
-                                <?php else: ?>
-                                    <i class="bi bi-mortarboard-fill"></i>
-                                <?php endif; ?>
-                            </div>
-                            <h6><?= htmlspecialchars($sekolah['nama_sekolah']) ?></h6>
-                            <div class="label-kartu">KARTU PESERTA UJIAN</div>
+            <div class="kartu-wrapper">
+                <?php foreach ($siswa_list as $siswa): ?>
+                <div class="kartu-item">
+                    <div class="kartu-header">
+                        <div class="logo-wrap">
+                            <?php if ($sekolah['logo'] && file_exists('../uploads/' . $sekolah['logo'])): ?>
+                                <img src="../uploads/<?= $sekolah['logo'] ?>" alt="Logo">
+                            <?php else: ?>
+                                <i class="bi bi-mortarboard-fill"></i>
+                            <?php endif; ?>
                         </div>
+                        <h6><?= htmlspecialchars($sekolah['nama_sekolah']) ?></h6>
+                        <div class="label-kartu">KARTU PESERTA</div>
+                    </div>
 
-                        <div class="kartu-body">
-                            <div class="info-row">
-                                <span class="info-label">NIS</span>
-                                <span class="info-value"><?= htmlspecialchars($siswa['nis']) ?></span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Nama Lengkap</span>
-                                <span class="info-value"><?= htmlspecialchars($siswa['nama_lengkap']) ?></span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Kelas</span>
-                                <span class="info-value"><?= htmlspecialchars($siswa['kelas']) ?></span>
-                            </div>
-
-                            <div class="kartu-exam-info">
-                                <div class="exam-title"><?= htmlspecialchars($judul_ujian) ?></div>
-                                <div class="exam-meta">
-                                    <?php if ($soal_count > 0): ?><?= $soal_count ?> Soal<?php endif; ?>
-                                    <?php if ($durasi > 0): ?><?php if ($soal_count > 0) echo ' &middot; '; ?><?= $durasi ?> menit<?php endif; ?>
-                                </div>
-                            </div>
+                    <div class="kartu-body">
+                        <div class="info-row">
+                            <span class="info-label">NIS</span>
+                            <span class="info-value"><?= htmlspecialchars($siswa['nis']) ?></span>
                         </div>
-
-                        <div class="kartu-footer">
-                            <i class="bi bi-info-circle me-1"></i>Hadir 15 menit sebelum ujian dimulai
+                        <div class="info-row">
+                            <span class="info-label">Nama Lengkap</span>
+                            <span class="info-value"><?= htmlspecialchars($siswa['nama_lengkap']) ?></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Kelas</span>
+                            <span class="info-value"><?= htmlspecialchars($siswa['kelas']) ?></span>
                         </div>
                     </div>
-                    <?php endforeach; ?>
+
+                    <div class="kartu-footer">
+                        <i class="bi bi-info-circle me-1"></i>Hadir 15 menit sebelum ujian dimulai
+                    </div>
                 </div>
-                <?php endif; ?>
-            <?php else: ?>
-            <div class="text-center text-muted py-5">
-                <i class="bi bi-card-text" style="font-size: 3rem;"></i>
-                <p class="mt-3">Pilih ujian untuk menampilkan kartu peserta</p>
+                <?php endforeach; ?>
             </div>
             <?php endif; ?>
         </div>

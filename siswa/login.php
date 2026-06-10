@@ -39,10 +39,6 @@ if (isset($_COOKIE['student_remember'])) {
         $_SESSION['siswa_nama'] = $siswa['nama_lengkap'];
         $_SESSION['siswa_kelas'] = $siswa['kelas'];
         $_SESSION['siswa_jurusan_id'] = $siswa['jurusan_id'];
-        if ($siswa['password_change_required']) {
-            header('Location: ganti_password.php');
-            exit;
-        }
         header('Location: ' . ($redirect ?: 'dashboard.php'));
         exit;
     }
@@ -81,12 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $stmt->close();
-
-                // Redirect to change password if required
-                if ($siswa['password_change_required']) {
-                    header('Location: ganti_password.php');
-                    exit;
-                }
 
                 header('Location: ' . ($redirect ?: 'dashboard.php'));
                 exit;

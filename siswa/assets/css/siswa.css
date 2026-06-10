@@ -613,10 +613,6 @@ body {
   }
 }
 
-/* Print helpers */
-@media print {
-  .no-print { display: none !important; }
-}
 
 @media (max-width: 480px) {
   .stat-cards {
