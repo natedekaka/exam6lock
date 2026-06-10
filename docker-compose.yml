@@ -58,7 +58,7 @@ services:
       MYSQL_PASSWORD: pass123
       TZ: Asia/Jakarta
     ports:
-      - "3313:3306"
+      - "3307:3306"
     volumes:
       - ./migrations:/docker-entrypoint-initdb.d:ro
       - exam6lock-dbdata:/var/lib/mysql:z
