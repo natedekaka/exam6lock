@@ -1,6 +1,8 @@
 <?php
 // koneksi.php - Koneksi Database MySQL
 
+date_default_timezone_set('Asia/Jakarta');
+
 $host = getenv('DB_HOST') ?: 'db:3306';
 $user = getenv('DB_USER') ?: 'root';
 $password = getenv('DB_PASS') ?: 'rootpass';
@@ -12,6 +14,8 @@ $conn = new mysqli($host, $user, $password, $database, $port);
 if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
 }
+
+$conn->query("SET time_zone = '+07:00'");
 
 $conn->set_charset("utf8mb4");
 
