@@ -83,9 +83,6 @@ $avatar_char = strtoupper(substr($admin_nama, 0, 1));
 			<a href="pengumuman.php" class="<?= $active_page === 'pengumuman.php' ? 'active' : '' ?>">
 				<i class="bi bi-megaphone"></i> Pengumuman
 			</a>
-			<a href="izin_remedi.php" class="<?= $active_page === 'izin_remedi.php' ? 'active' : '' ?>">
-				<i class="bi bi-arrow-repeat"></i> Izin Remedi
-			</a>
 			<a href="ganti_password.php" class="<?= $active_page === 'ganti_password.php' ? 'active' : '' ?>">
 				<i class="bi bi-key"></i> Ganti Password
 			</a>
