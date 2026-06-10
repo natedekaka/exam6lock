@@ -35,8 +35,6 @@ if ($my_role !== 'super_admin') {
     die('Akses ditolak! Hanya Super Admin yang dapat mengakses halaman ini.');
 }
 
-$admin_list = $conn->query("SELECT id, username, nama_lengkap, role, created_at, last_login FROM admin_users ORDER BY role DESC, nama_lengkap ASC");
-
 if (isset($_POST['add_user'])) {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -139,6 +137,8 @@ if (isset($_GET['refresh'])) {
     header('Location: manage_users.php');
     exit;
 }
+
+$admin_list = $conn->query("SELECT id, username, nama_lengkap, role, created_at, last_login FROM admin_users ORDER BY role DESC, nama_lengkap ASC");
 ?>
 
 <!DOCTYPE html>
