@@ -53,6 +53,25 @@
         }
       });
     });
+
+    // ─── Cegah dobel klik — disable tombol pas submit ────
+    document.addEventListener('submit', function (e) {
+      var btn = e.target.querySelector('button[type="submit"]');
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      btn.dataset.html = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Memproses...';
+    });
+
+    // ─── Loading state untuk link export ────
+    document.querySelectorAll('a[href*="ekspor"], a[href*="export"]').forEach(function (link) {
+      link.addEventListener('click', function () {
+        if (link.dataset.loading === '1') return;
+        link.dataset.loading = '1';
+        link.dataset.html = link.innerHTML;
+        link.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Menyiapkan...';
+      });
+    });
   });
 
 })();
