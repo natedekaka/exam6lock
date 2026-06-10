@@ -58,6 +58,13 @@
     document.addEventListener('submit', function (e) {
       var btn = e.target.querySelector('button[type="submit"]');
       if (!btn || btn.disabled) return;
+      // Simpan name/value tombol ke hidden input sebelum disable
+      // (disabled button tidak dikirim browser sebagai data POST)
+      var hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = btn.name;
+      hidden.value = btn.value || '1';
+      e.target.appendChild(hidden);
       btn.disabled = true;
       btn.dataset.html = btn.innerHTML;
       btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Memproses...';
