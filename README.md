@@ -70,11 +70,21 @@ Aplikasi ujian online berbasis PHP dan MySQL untuk sekolah dengan fitur keamanan
   - Device Fingerprint - deteksi pergantian device/browser
 
 ### Siswa
+- **Dashboard Siswa** setelah login
+  - Stat cards: ujian tersedia, sudah dikerjakan, rata-rata nilai, sisa ujian
+  - Pengumuman terbaru (filter by kelas)
+  - Daftar ujian tersedia (4 teratas) — langsung klik "Mulai"
+  - Riwayat 5 nilai terakhir dengan badge skor
+- **Top Navbar** (mobile-friendly)
+  - Navigasi: Beranda, Ujian, Nilai, Pengumuman
+  - Dropdown user (Profil, Ganti Password, Logout) — selalu terlihat di HP
 - **Landing Page** dengan daftar ujian yang tersedia
-  - Filter ujian berdasarkan status
-  - Tampilan responsif dan informatif
-- **Verifikasi Kode Rahasia** sebelum ujian (jika diaktifkan)
-- **Input Identitas** (NIS, Nama, Kelas) sebelum mulai
+  - Filter ujian berdasarkan status dan jadwal
+  - Guest: "Login untuk Mengerjakan" → login → dashboard
+  - Login: "Mulai Ujian" → langsung ke halaman ujian
+- **Pra-check Ujian**: Jika sudah pernah submit & tidak ada izin remedi → halaman blokir dengan tombol ke Dashboard
+- **Izin Remedi**: Admin beri izin → siswa bisa ujian ulang (otomatis lewati pra-check)
+- **Verifikasi Kode Rahasia** sebelum ujian (jika diaktifkan) — di-reset setiap kali ganti ujian
 - **Sistem Ujian Interaktif** dengan timer countdown
   - 1 soal per halaman (load cepat)
   - Navigasi grid nomor soal (lompat ke soal tertentu)
@@ -85,10 +95,11 @@ Aplikasi ujian online berbasis PHP dan MySQL untuk sekolah dengan fitur keamanan
   - Dukungan soal essay (isian singkat)
 - **Review Jawaban** setelah submit (jika diaktifkan guru)
   - Lihat soal, jawaban siswa, dan kunci jawaban
+  - Filter: semua, benar saja, salah saja
   - Tampilkan skor per soal
-- **Cek Riwayat Nilai** berdasarkan NIS
+- **Riwayat Nilai** berdasarkan NIS
   - Lihat history semua ujian yang sudah dikerjakan
-  - Detail nilai dan skor
+  - Detail nilai dan skor (link ke halaman review jawaban)
 
 ### Keamanan
 - **CSRF Protection** untuk semua API endpoint
@@ -126,37 +137,59 @@ Aplikasi ujian online berbasis PHP dan MySQL untuk sekolah dengan fitur keamanan
 ```
 exam6lock/
 ├── admin/                      # Panel admin
+│   ├── assets/                 # CSS & JS admin (sidebar, dashboard)
+│   ├── partials/               # Partial templates (sidebar.php)
 │   ├── index.php              # Dashboard admin
 │   ├── login.php              # Login admin
 │   ├── logout.php             # Logout admin
 │   ├── tambah_soal.php        # Tambah/edit soal (dropdown kategori: Mudah/Sedang/Sulit)
 │   ├── manage_users.php        # Manajemen pengguna
-│   ├── rekap_nilai.php         # Rekap nilai & ekspor
+│   ├── kelola_siswa.php        # Manajemen data siswa (+ download template CSV)
+│   ├── rekap_nilai.php         # Rekap nilai & ekspor (+ izin remedi)
 │   ├── monitor_ujian.php       # Monitor ujian real-time
+│   ├── izin_remedi.php         # Atur izin remedi siswa
 │   ├── profil_sekolah.php      # Pengaturan profil sekolah
-│   ├── analytics.php           # Analytics Dashboard (NEW: analisis butir soal, distribusi grade dinamis)
-│   ├── import_soal.php         # Import soal dari Excel/CSV (template: kategori Mudah/Sedang/Sulit)
+│   ├── analytics.php           # Analytics Dashboard (analisis butir soal, distribusi grade dinamis)
+│   ├── import_soal.php         # Import soal dari Excel/CSV
 │   ├── ekspor_excel.php        # Ekspor nilai ke Excel
 │   ├── ekspor_soal_pdf.php     # Ekspor soal ke PDF
-│   └── download_template.php   # Download template import
+│   ├── backup_restore.php      # Backup & restore database
+│   ├── audit_log.php           # Log aktivitas admin
+│   └── detail_jawaban.php      # Detail jawaban siswa (admin view)
+├── siswa/                      # Area siswa
+│   ├── assets/css/siswa.css    # CSS khusus siswa (navbar, dashboard, dll)
+│   ├── partials/navbar.php     # Top navbar (shared)
+│   ├── dashboard.php           # Dashboard siswa (stat cards, pengumuman, ujian, nilai)
+│   ├── login.php               # Login siswa (dengan remember token)
+│   ├── logout.php              # Logout siswa
+│   ├── index.php               # Alihkan ke dashboard
+│   ├── profil.php              # Profil siswa
+│   ├── ganti_password.php      # Ganti password (wajib jika password_change_required)
+│   ├── pengumuman.php          # Daftar pengumuman
+│   ├── register.php            # Registrasi siswa
+│   └── detail_jawaban.php      # Review jawaban siswa setelah ujian
 ├── api/                        # API endpoint
 │   ├── index.php               # API router
-│   └── submit_jawaban.php      # Submit jawaban siswa
+│   └── submit_jawaban.php      # Submit & auto-save jawaban siswa
 ├── config/                     # Konfigurasi
 │   ├── database.php            # Konfigurasi database
 │   ├── init_sekolah.php        # Inisialisasi sekolah & tabel
-│   └── db_helper.php           # Database helper functions (fetchAllPrepared, fetchRowPrepared)
-├── vendor/                     # Library (Bootstrap, Bootstrap Icons)
+│   └── db_helper.php           # Database helper functions
+├── vendor/                     # Library (Bootstrap 5.3.3, Bootstrap Icons 1.11.3)
 ├── uploads/                    # File upload (logo, gambar soal)
 ├── migrations/                 # Database migrations
 │   ├── 06_performance_indexes.sql
-│   └── 07_add_kategori_timer_soal.sql
+│   ├── 07_add_kategori_timer_soal.sql
+│   ├── 08_increase_max_violations.sql
+│   ├── 09_new_features.sql     # Tabel: jurusan, kelas, siswa, ujian_kelas, izin_remedi, pengumuman, audit_log
+│   └── 10_siswa_password_change.sql
 ├── backup_db/                  # Database backup
-│   └── ujian_online.sql       # Full database backup
-├── index.php                   # Landing page (list ujian)
-├── ujian.php                   # Halaman ujian siswa
+│   └── ujian_online.sql        # Full database backup
+├── index.php                   # Landing page (list ujian + hero)
+├── ujian.php                   # Halaman ujian siswa (pre-check, kode, identitas, soal, submit)
 ├── review.php                  # Review jawaban setelah submit
 ├── riwayat.php                 # Riwayat nilai siswa
+├── petunjuk_siswa.pdf          # Petunjuk pengerjaan ujian (PDF)
 ├── docker-compose.yml          # Konfigurasi Podman
 └── README.md                   # Dokumentasi ini
 ```
@@ -431,7 +464,7 @@ Setelah semua langkah di atas:
   - **Hapus dari Progress**: Hapus siswa dari daftar yang sedang ujian
   - **Lihat Pelanggaran**: Cek tab switching/device change
 
-#### 6. Rekap Nilai
+#### 6. Rekap Nilai & Izin Remedi
 - Dashboard → **Rekap Nilai**
 - Pilih ujian yang ingin direkap
 - Lihat tabel nilai:
@@ -440,10 +473,19 @@ Setelah semua langkah di atas:
   - Waktu submit
   - Status kelulusan
   
+- **Izin Remedi**: Klik tombol "Beri Izin" pada siswa yang perlu remedial — siswa bisa ujian ulang
+- Lihat daftar siswa yang sudah diberi izin remedi (ditandai di tabel)
+  
 - **Ekspor ke Excel**:
   - Klik tombol "Ekspor Excel"
   - File Excel akan diunduh dengan format rapi
   - Berisi semua detail jawaban per siswa
+
+#### 7. Izin Remedi Siswa
+- Dashboard → **Izin Remedi** (atau langsung dari Rekap Nilai)
+- Atur izin remedi per siswa per ujian
+- siswa yang sudah diberi izin bisa **mengerjakan ulang** ujian
+- Izin bisa dicabut kembali oleh admin
 
 #### 7. Analytics Dashboard (NEW)
 - Dashboard → **Analytics Dashboard**
@@ -472,52 +514,57 @@ Setelah semua langkah di atas:
 
 ### Siswa
 
-#### 1. Akses Halaman Ujian
-- Buka landing page aplikasi (http://localhost:8024)
-- Lihat daftar ujian yang tersedia (status: Aktif)
-- Klik **"Kerjakan"** pada ujian yang diinginkan
+#### 1. Login / Dashboard
+- Buka halaman utama aplikasi (http://localhost:8024)
+- Klik **"Login Siswa"** di hero section, atau klik **"Login untuk Mengerjakan"** pada kartu ujian
+- Masukkan **NIS** dan **Password**
+- Login berhasil → masuk ke **Dashboard Siswa**:
+  - 👋 Greeting dengan nama & kelas
+  - **4 Stat Cards**: ujian tersedia, sudah dikerjakan, rata-rata nilai, sisa ujian
+  - **Pengumuman** terbaru (3 terakhir, filter by kelas)
+  - **Ujian Tersedia** (4 teratas) — klik "Mulai" untuk langsung ke ujian
+  - **Riwayat Nilai** (5 terakhir) — klik "Detail" untuk lihat pembahasan jawaban
 
-#### 2. Verifikasi Kode Rahasia (jika diaktifkan)
-- Masukkan kode rahasia yang diberikan guru
-- Klik **"Verifikasi"**
-- Jika kode salah, akan diminta ulang
+#### 2. Navigasi
+- **Top Navbar** selalu tersedia:
+  - **Beranda**: Kembali ke Dashboard
+  - **Ujian**: Lihat semua ujian tersedia (landing page)
+  - **Nilai**: Riwayat nilai semua ujian
+  - **Pengumuman**: Semua pengumuman
+  - **Avatar (pojok kanan)**: Profil, Ganti Password, Logout
+- Di HP, avatar dan hamburger menu selalu terlihat — dropdown user bisa diakses langsung
 
-#### 3. Isi Identitas
-- Masukkan **NIS** (Nomor Induk Siswa)
-- Masukkan **Nama Lengkap**
-- Pilih **Kelas**
-- Klik **"Mulai Ujian"**
+#### 3. Saat Ujian
+- Klik **"Mulai Ujian"** dari dashboard atau kartu ujian di landing page
+- Jika sudah pernah submit & **tidak ada izin remedi** → muncul halaman blokir dengan tombol "Kembali ke Dashboard"
+- Jika sudah pernah submit & **ada izin remedi dari admin** → lewati blokir, lanjut ujian ulang
+- Jika ujian punya **Kode Rahasia** → masukkan kode (harus diisi setiap kali ganti ujian)
+- Identitas terisi otomatis dari session (NIS, Nama, Kelas readonly) → klik **"Mulai Ujian"**
 
 #### 4. Mengerjakan Soal
 - Soal ditampilkan 1 per 1 halaman
 - Navigasi menggunakan:
   - **Previous/Next button** di bawah soal
-  - **Grid nomor** di sidebar (klik untuk lompat ke soal tertentu)
-  
+  - **Grid nomor** (klik untuk lompat ke soal tertentu)
 - **Indicator warna**:
   - 🔵 **Biru**: Soal yang sedang dikerjakan
   - 🟢 **Hijau**: Soal sudah dijawab
   - ⚪ **Abu-abu**: Soal belum dijawab
-  
-- **Timer** akan berjalan di pojok kanan atas
-- Jawaban **auto-save** setiap 30 detik (jika koneksi bermasalah, jawaban tetap tersimpan)
-- Jika halaman refresh/crash, jawaban sebelumnya akan dimuat otomatis
+- **Timer** akan berjalan (per ujian atau per soal)
+- Jawaban **auto-save** setiap 30 detik
+- Jika halaman refresh/crash, jawaban dimuat otomatis
 
-#### 5. Submit Jawaban
-- Setelah semua soal dijawab, klik **"Kirim Jawaban"**
-- Konfirmasi pengiriman (pastikan semua soal sudah dijawab)
-- Nilai akan muncul langsung setelah submit
+#### 5. Submit & Hasil
+- Klik **"Kirim Jawaban"** setelah selesai
+- Nilai muncul langsung setelah submit
+- Jika diaktifkan, klik **"Lihat Review"** untuk lihat pembahasan:
+  - Score summary (total skor, benar/total, persentase)
+  - Filter: semua / benar saja / salah saja
+  - Tiap soal: opsi jawaban, tanda jawaban benar ✅ vs jawaban siswa ❌
 
-#### 6. Review Jawaban (jika diaktifkan guru)
-- Setelah submit, klik **"Lihat Review"**
-- Lihat soal, jawaban Anda, dan kunci jawaban benar
-- Tampilkan skor per soal
-
-#### 7. Cek Riwayat Nilai
-- Klik menu **"Riwayat Nilai"** di landing page
-- Masukkan **NIS**
-- Lihat history semua ujian yang sudah dikerjakan
-- Klik detail untuk melihat breakdown nilai
+#### 6. Riwayat Nilai
+- Dari navbar klik **Nilai** atau dari dashboard lihat **Riwayat Nilai Terakhir**
+- Klik **"Detail"** untuk lihat pembahasan jawaban lengkap
 
 ---
 
@@ -544,26 +591,30 @@ Device Fingerprint: Aktif
 
 ## Alur Ujian
 
-1. **Halaman Utama**: Siswa melihat list ujian yang tersedia
-2. **Input Kode** (jika diperlukan): Masukkan kode rahasia
-3. **Identitas**: Isi NIS, Nama, Kelas → klik "Mulai Ujian"
-4. **Soal**: Jawab 1 soal per halaman dengan navigasi:
+1. **Halaman Utama**: Siswa melihat hero + daftar ujian tersedia
+2. **Login**: Klik "Login Siswa" atau "Login untuk Mengerjakan" → **Dashboard Siswa**
+3. **Dashboard**: Lihat pengumuman, statistik, pilih ujian → klik "Mulai"
+4. **Pre-check**: Jika sudah pernah submit, cek izin remedi — blokir atau lanjut
+5. **Kode Ujian** (jika ada): Masukkan kode rahasia (wajib per ujian, tidak persist)
+6. **Identitas**: Terisi otomatis (readonly) dari session → klik "Mulai Ujian"
+7. **Soal**: Jawab 1 soal per halaman dengan navigasi:
    - Previous/Next button
    - Grid nomor soal untuk lompat ke soal tertentu
    - Indicator warna: abu (belum), hijau (dijawab), biru (aktif)
-5. **Submit**: Klik "Kirim Jawaban" jika sudah selesai
-6. **Hasil**: Lihat skor langsung
-7. **Review** (opsional): Lihat detail jawaban dan kunci
+8. **Submit**: Klik "Kirim Jawaban" jika sudah selesai
+9. **Hasil**: Lihat skor langsung setelah submit
+10. **Review** (opsional): Lihat detail jawaban, filter benar/salah, opsi jawaban
 
 ---
 
 ## Akun Default
 
-| Role | Username | Password | Keterangan |
-|------|----------|----------|------------|
+| Role | Username/NIS | Password | Keterangan |
+|------|-------------|----------|------------|
 | Admin | `admin` | `admin123` | Segera ganti setelah login pertama |
+| Siswa | (lihat data siswa di database) | `siswa123` (default) | Atur di Manajemen Siswa → Import |
 
-> ⚠️ **Penting**: Untuk keamanan, segera ubah password default admin. Saat ini fitur manajemen user belum tersedia di panel admin (dalam pengembangan).
+> ⚠️ **Penting**: Untuk keamanan, segera ubah password default admin.
 
 ---
 
@@ -619,9 +670,10 @@ Device Fingerprint: Aktif
 - Pastikan JavaScript tidak diblokir browser
 - Cek console browser (F12) untuk error
 
-### 5. Siswa tidak bisa submit
+### 5. Siswa tidak bisa submit atau diblokir saat akses ujian
+- **Sudah pernah submit & tidak ada izin remedi** → halaman blokir muncul, klik "Kembali ke Dashboard"
+- Minta admin untuk memberikan **izin remedi** di menu **Izin Remedi** atau **Rekap Nilai**
 - Cek apakah ada pelanggaran browser lock (terlalu sering tab switch)
-- Cek apakah siswa sudah pernah submit sebelumnya (butuh izin remedial dari admin)
 
 ### 6. Container tidak bisa start
 ```bash
