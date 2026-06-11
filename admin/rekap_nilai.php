@@ -30,14 +30,18 @@ $sort_by = isset($_GET['sort']) ? $_GET['sort'] : 'skor_desc';
 $kelas_list = [];
 
 $izin_remedi_list = [];
-$stmt = $conn->prepare("SELECT nis FROM izin_remedi WHERE id_ujian = ?");
-$stmt->bind_param("i", $selected_ujian);
-$stmt->execute();
-$result = $stmt->get_result();
-while ($row = $result->fetch_assoc()) {
-    $izin_remedi_list[] = $row['nis'];
+$izin_remedi_data = [];
+if ($selected_ujian > 0) {
+    $stmt = $conn->prepare("SELECT nis, approved_at FROM izin_remedi WHERE id_ujian = ?");
+    $stmt->bind_param("i", $selected_ujian);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $izin_remedi_list[] = $row['nis'];
+        $izin_remedi_data[$row['nis']] = $row['approved_at'];
+    }
+    $stmt->close();
 }
-$stmt->close();
 
 $hasil_list = [];
 $all_results = [];
@@ -132,7 +136,7 @@ if (isset($_POST['give_remedi']) && isset($_POST['id_hasil']) && isset($_POST['i
     $stmt->close();
     
     if ($siswa) {
-        $stmt = $conn->prepare("INSERT INTO izin_remedi (id_ujian, nis, nama, kelas, diberikan_oleh) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nama = VALUES(nama), kelas = VALUES(kelas), diberikan_oleh = VALUES(diberikan_oleh)");
+        $stmt = $conn->prepare("INSERT INTO izin_remedi (id_ujian, nis, nama, kelas, diberikan_oleh, approved_at) VALUES (?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE nama = VALUES(nama), kelas = VALUES(kelas), diberikan_oleh = VALUES(diberikan_oleh), approved_at = NOW()");
         $admin_user = $_SESSION['admin_username'];
         $stmt->bind_param("issss", $id_ujian, $siswa['nis'], $siswa['nama'], $siswa['kelas'], $admin_user);
         if ($stmt->execute()) {
@@ -181,7 +185,7 @@ if (isset($_POST['batch_remedi']) && isset($_POST['selected_ids']) && isset($_PO
         $stmt->close();
         
         if ($siswa) {
-            $stmt = $conn->prepare("INSERT INTO izin_remedi (id_ujian, nis, nama, kelas, diberikan_oleh) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nama = VALUES(nama), kelas = VALUES(kelas), diberikan_oleh = VALUES(diberikan_oleh)");
+            $stmt = $conn->prepare("INSERT INTO izin_remedi (id_ujian, nis, nama, kelas, diberikan_oleh, approved_at) VALUES (?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE nama = VALUES(nama), kelas = VALUES(kelas), diberikan_oleh = VALUES(diberikan_oleh), approved_at = NOW()");
             $stmt->bind_param("issss", $id_ujian, $siswa['nis'], $siswa['nama'], $siswa['kelas'], $admin_user);
             $stmt->execute();
             $stmt->close();
@@ -597,11 +601,10 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
                             <?php 
                             $no = 1;
                             foreach ($hasil_list as $hasil): 
-                            $stmt_re = $conn->prepare("SELECT id, approved_at FROM izin_remedi WHERE id_ujian=? AND nis=?");
-                            $stmt_re->bind_param("is", $hasil['id_ujian'], $hasil['nis']);
-                            $stmt_re->execute();
-                            $remedi_data = $stmt_re->get_result()->fetch_assoc();
-                            $stmt_re->close();
+                            $remedi_data = null;
+                            if (in_array($hasil['nis'], $izin_remedi_list)) {
+                                $remedi_data = ['approved_at' => $izin_remedi_data[$hasil['nis']]];
+                            }
                             ?>
                             <tr>
                                 <td class="text-center">
@@ -653,11 +656,7 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
                                 </td>
                                 <td class="text-center">
                                     <?php if ($remedi_data): ?>
-                                        <?php if ($remedi_data['approved_at']): ?>
-                                            <span class="badge bg-success" title="Disetujui">Remedi</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-warning text-dark" title="Menunggu persetujuan">Pending</span>
-                                        <?php endif; ?>
+                                        <span class="badge bg-success">Remedi</span>
                                     <?php else: ?>
                                         <span class="text-muted">-</span>
                                     <?php endif; ?>

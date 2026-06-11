@@ -1288,8 +1288,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                 questionSection.style.display = 'none';
             } else {
                 examContent.style.display = 'block';
+                <?php if (isset($_SESSION['siswa_id']) && empty($ujian['kode_ujian'])): ?>
+                // Logged-in student - hide identity section immediately (no flash)
+                identitySection.style.display = 'none';
+                questionSection.style.display = 'block';
+                document.getElementById('loadingIndicator').style.display = 'block';
+                <?php else: ?>
                 identitySection.style.display = 'block';
                 questionSection.style.display = 'none';
+                <?php endif; ?>
             }
             
             loadFromLocalStorage();
@@ -1297,6 +1304,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             <?php if (isset($_SESSION['siswa_id'])): ?>
             // Student is logged in - mark identity as saved
             identitySaved = true;
+            
+            <?php if (empty($ujian['kode_ujian'])): ?>
+            // Auto-start exam for logged-in students (no exam code needed)
+            setTimeout(startWithIdentity, 100);
+            <?php endif; ?>
             <?php endif; ?>
         }
         
@@ -1445,7 +1457,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
               function handleFsChange() {
                   if (examFinished) return;
                   const isFsNow = !!(document.fullscreenElement || document.webkitFullscreenElement);
-                  // Jangan anggap pelanggaran jika HP sleep / layar mati
+                  
+                  // Jika HP sleep / layar mati — jangan anggap pelanggaran
                   if (document.hidden) { wasFs = isFsNow; return; }
                   
                   if (wasFs && !isFsNow && !isSubmittingExam) {
@@ -1473,12 +1486,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                   wasFs = isFsNow;
               }
 
+              // === HP Sleep Handling: batalkan grace timer saat layar mati ===
+              function handleVisibilityChange() {
+                  if (examFinished) return;
+                  if (document.hidden) {
+                      // HP sleep / pindah tab — batalkan grace timer fullscreen
+                      if (fsGraceTimer) {
+                          clearTimeout(fsGraceTimer);
+                          fsGraceTimer = null;
+                      }
+                      // Reset state agar tidak dianggap "exit fullscreen" saat bangun
+                      wasFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                  } else {
+                      // Bangun dari sleep — coba masuk fullscreen lagi
+                      if (!(document.fullscreenElement || document.webkitFullscreenElement)) {
+                          setTimeout(enterFullscreen, 500);
+                      }
+                  }
+              }
+
               document.removeEventListener('fullscreenchange', fullscreenExitHandler);
               document.removeEventListener('webkitfullscreenchange', fullscreenExitHandler);
+              document.removeEventListener('visibilitychange', fullscreenExitHandler);
 
               fullscreenExitHandler = handleFsChange;
               document.addEventListener('fullscreenchange', fullscreenExitHandler);
               document.addEventListener('webkitfullscreenchange', fullscreenExitHandler);
+              document.addEventListener('visibilitychange', handleVisibilityChange);
           }
 
           function showFsModal(message, isFinal) {
@@ -1766,8 +1800,13 @@ function initExamFeatures() {
                     // Show rules modal with callback to display exam content
                     showExamRulesWarning(function() {
                         document.getElementById('examContent').style.display = 'block';
+                        <?php if (isset($_SESSION['siswa_id'])): ?>
+                        // Logged-in student - skip identity, auto-start exam
+                        setTimeout(startWithIdentity, 100);
+                        <?php else: ?>
                         document.getElementById('identitySection').style.display = 'block';
                         document.getElementById('questionSection').style.display = 'none';
+                        <?php endif; ?>
                     });
                 } else {
                     alert(data.message || 'Kode ujian salah!');
@@ -1878,64 +1917,8 @@ function initExamFeatures() {
                 awayState.isAway = false;
             }
             
-            // Grace period untuk fullscreen exit
-            let fsGraceTimer = null;
-            const FS_GRACE = 10000; // 10 detik grace period
-
-            function handleFullscreenExit() {
-                if (examFinished || isSubmittingExam) return;
-                if (document.hidden) return;
-
-                // Grace period: tunggu 10 detik sebelum catat
-                if (fsGraceTimer) clearTimeout(fsGraceTimer);
-                fsGraceTimer = setTimeout(() => {
-                    if (examFinished) return;
-                    violationCount++;
-                    logViolation('exit_fullscreen', 'Siswa keluar dari mode fullscreen');
-                    
-                    if (violationCount >= maxViolations) {
-                        alert('Anda terlalu sering keluar dari fullscreen. Jawaban akan disubmit!');
-                        submitFinal();
-                    } else {
-                        const remaining = maxViolations - violationCount;
-                        alert(`Peringatan: Anda keluar dari fullscreen!\nPelanggaran: ${violationCount}/${maxViolations}\nSisa: ${remaining}x`);
-                        setTimeout(enterFullscreen, 1000);
-                    }
-                }, FS_GRACE);
-            }
-
-            function handleFullscreenEnter() {
-                if (fsGraceTimer) {
-                    clearTimeout(fsGraceTimer);
-                    fsGraceTimer = null;
-                }
-            }
-
-            // Detect fullscreen change
-            document.addEventListener('fullscreenchange', function() {
-                if (examFinished) return;
-                const wasFullscreen = isFullscreen;
-                isFullscreen = !!document.fullscreenElement;
-                
-                if (wasFullscreen && !isFullscreen) {
-                    handleFullscreenExit();
-                } else if (!wasFullscreen && isFullscreen) {
-                    handleFullscreenEnter();
-                }
-            });
-            
-            // Safari compatibility
-            document.addEventListener('webkitfullscreenchange', function() {
-                if (examFinished) return;
-                const wasFullscreen = isFullscreen;
-                isFullscreen = !!document.webkitFullscreenElement;
-                
-                if (wasFullscreen && !isFullscreen) {
-                    handleFullscreenExit();
-                } else if (!wasFullscreen && isFullscreen) {
-                    handleFullscreenEnter();
-                }
-            });
+            // Fullscreen exit sudah ditangani oleh initFullscreenExitDetection()
+            // (tidak perlu duplikasi handler di sini)
             
             function checkIdle() {
                 // Skip if exam finished
