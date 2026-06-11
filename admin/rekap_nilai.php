@@ -124,7 +124,7 @@ if (isset($_GET['hapus'])) {
     $stmt->close();
 }
 
-if (isset($_POST['give_remedi']) && isset($_POST['id_hasil']) && isset($_POST['id_ujian'])) {
+if (!empty($_POST['give_remedi']) && isset($_POST['id_hasil']) && isset($_POST['id_ujian'])) {
     $id_hasil = (int)$_POST['id_hasil'];
     $id_ujian = (int)$_POST['id_ujian'];
     
@@ -147,7 +147,7 @@ if (isset($_POST['give_remedi']) && isset($_POST['id_hasil']) && isset($_POST['i
     }
 }
 
-if (isset($_POST['remove_remedi']) && isset($_POST['id_hasil']) && isset($_POST['id_ujian'])) {
+if (!empty($_POST['remove_remedi']) && isset($_POST['id_hasil']) && isset($_POST['id_ujian'])) {
     $id_hasil = (int)$_POST['id_hasil'];
     $id_ujian = (int)$_POST['id_ujian'];
     
