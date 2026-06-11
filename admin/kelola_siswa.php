@@ -126,6 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'File CSV kosong atau tidak valid.';
                 $message_type = 'danger';
             } else {
+                // Strip BOM (Byte Order Mark) dari header pertama jika ada
+                $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', $header[0]);
                 // Normalize header names
                 $h = array_map('strtolower', array_map('trim', $header));
                 // Map expected columns
