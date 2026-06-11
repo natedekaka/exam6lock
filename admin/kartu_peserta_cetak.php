@@ -41,10 +41,11 @@ $st->close();
         .kartu-item {
             width: calc(50% - 2mm);
             border: 1px solid #adb5bd;
-            border-radius: 3px;
+            border-radius: 4px;
             page-break-inside: avoid;
             break-inside: avoid;
             overflow: hidden;
+            box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.06);
         }
         .kartu-header {
             background: linear-gradient(135deg, <?= $sekolah['warna_primer'] ?> 0%, <?= $sekolah['warna_sekunder'] ?> 100%);
@@ -82,15 +83,28 @@ $st->close();
         .kartu-body { padding: 3mm 2.5mm 1.5mm; }
         .kartu-body .info-row {
             display: flex;
-            justify-content: space-between;
-            padding: 0.5mm 0;
-            border-bottom: 0.3px solid #eee;
+            align-items: baseline;
+            padding: 0.8mm 0;
+            border-bottom: 0.3px solid #e0e0e0;
             font-size: 2.8mm;
         }
         .kartu-body .info-row:last-child { border-bottom: none; }
-        .kartu-body .info-label { color: #555; }
-        .kartu-body .info-value { font-weight: 600; color: #1a1a2e; }
-        .kartu-body .info-value.mono { font-family: 'Courier New', monospace; letter-spacing: 1px; }
+        .kartu-body .info-label {
+            color: #555;
+            min-width: 30mm;
+            font-size: 2.6mm;
+        }
+        .kartu-body .info-value {
+            font-weight: 600;
+            color: #1a1a2e;
+            text-align: right;
+            flex: 1;
+        }
+        .kartu-body .info-value.mono {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1.2px;
+            font-weight: 700;
+        }
 
         .kartu-footer {
             text-align: center;
