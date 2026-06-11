@@ -87,18 +87,18 @@ $st->close();
             padding: 0.8mm 0;
             border-bottom: 0.3px solid #e0e0e0;
             font-size: 2.8mm;
+            gap: 1.5mm;
         }
         .kartu-body .info-row:last-child { border-bottom: none; }
         .kartu-body .info-label {
             color: #555;
-            min-width: 30mm;
+            min-width: 22mm;
             font-size: 2.6mm;
+            flex-shrink: 0;
         }
         .kartu-body .info-value {
             font-weight: 600;
             color: #1a1a2e;
-            text-align: right;
-            flex: 1;
         }
         .kartu-body .info-value.mono {
             font-family: 'Courier New', monospace;
