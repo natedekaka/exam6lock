@@ -51,7 +51,7 @@ $st->close();
             background: linear-gradient(135deg, <?= $sekolah['warna_primer'] ?> 0%, <?= $sekolah['warna_sekunder'] ?> 100%);
             color: white;
             text-align: center;
-            padding: 2.5mm 2mm 2mm;
+            padding: 3mm 2mm 2.5mm;
             position: relative;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
@@ -80,20 +80,20 @@ $st->close();
         .kartu-header h6 { font-size: 3.2mm; font-weight: 700; margin-bottom: 0.2mm; }
         .kartu-header .label-kartu { font-size: 2.5mm; opacity: 0.85; letter-spacing: 1px; }
 
-        .kartu-body { padding: 3mm 2.5mm 1.5mm; }
+        .kartu-body { padding: 3mm 6mm 2mm 8mm; }
         .kartu-body .info-row {
             display: flex;
             align-items: baseline;
-            padding: 0.8mm 0;
+            padding: 1mm 0;
             border-bottom: 0.3px solid #e0e0e0;
-            font-size: 2.8mm;
-            gap: 1.5mm;
+            font-size: 3mm;
+            gap: 2mm;
         }
         .kartu-body .info-row:last-child { border-bottom: none; }
         .kartu-body .info-label {
             color: #555;
-            min-width: 22mm;
-            font-size: 2.6mm;
+            min-width: 26mm;
+            font-size: 2.8mm;
             flex-shrink: 0;
         }
         .kartu-body .info-value {
