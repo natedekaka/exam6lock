@@ -667,21 +667,15 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
                                             <i class="bi bi-eye"></i>
                                         </a>
                                         <?php if ($hasil['has_remedi']): ?>
-                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Cabut izin remedi untuk <?= htmlspecialchars($hasil['nama']) ?>?')">
-                                                <input type="hidden" name="id_hasil" value="<?= $hasil['id'] ?>">
-                                                <input type="hidden" name="id_ujian" value="<?= $selected_ujian ?>">
-                                                <button type="submit" name="remove_remedi" class="btn btn-sm btn-outline-danger" title="Cabut Remedi">
-                                                    <i class="bi bi-x-circle"></i>
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Cabut Remedi"
+                                                onclick="removeRemedi(<?= (int)$hasil['id'] ?>, <?= (int)$selected_ujian ?>, '<?= htmlspecialchars(addslashes($hasil['nama'])) ?>')">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
                                         <?php else: ?>
-                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Beri izin remedi untuk <?= htmlspecialchars($hasil['nama']) ?>?')">
-                                                <input type="hidden" name="id_hasil" value="<?= $hasil['id'] ?>">
-                                                <input type="hidden" name="id_ujian" value="<?= $selected_ujian ?>">
-                                                <button type="submit" name="give_remedi" class="btn btn-sm btn-success" title="Beri Remedi">
-                                                    <i class="bi bi-arrow-repeat"></i>
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn btn-sm btn-success" title="Beri Remedi"
+                                                onclick="giveRemedi(<?= (int)$hasil['id'] ?>, <?= (int)$selected_ujian ?>, '<?= htmlspecialchars(addslashes($hasil['nama'])) ?>')">
+                                                <i class="bi bi-arrow-repeat"></i>
+                                            </button>
                                         <?php endif; ?>
                                         <button type="button" class="btn btn-sm btn-danger" title="Hapus" onclick="deleteRecord(<?= (int)$hasil['id'] ?>, <?= (int)$selected_ujian ?>, '<?= htmlspecialchars(addslashes($hasil['nama'])) ?>')">
                                             <i class="bi bi-trash"></i>
@@ -980,10 +974,16 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
         }
     </style>
     
-    <!-- Hidden Delete Form (outside batch form to avoid nesting) -->
+    <!-- Hidden Action Forms (outside batch form to avoid nesting) -->
     <form id="deleteForm" method="GET" style="display:none;">
         <input type="hidden" name="ujian" id="deleteUjian">
         <input type="hidden" name="hapus" id="deleteId">
+    </form>
+    <form id="remediForm" method="POST" style="display:none;">
+        <input type="hidden" name="give_remedi" value="">
+        <input type="hidden" name="remove_remedi" value="">
+        <input type="hidden" name="id_hasil" value="">
+        <input type="hidden" name="id_ujian" value="">
     </form>
     
     <script>
@@ -993,6 +993,26 @@ if (isset($_POST['delete_all']) && isset($_POST['id_ujian_batch'])) {
             document.getElementById('deleteUjian').value = ujian;
             document.getElementById('deleteForm').submit();
         }
+    }
+
+    function giveRemedi(id, ujian, nama) {
+        if (!confirm('Beri izin remedi untuk ' + nama + '?')) return;
+        var form = document.getElementById('remediForm');
+        form.querySelector('[name="give_remedi"]').value = '1';
+        form.querySelector('[name="remove_remedi"]').value = '';
+        form.querySelector('[name="id_hasil"]').value = id;
+        form.querySelector('[name="id_ujian"]').value = ujian;
+        form.submit();
+    }
+
+    function removeRemedi(id, ujian, nama) {
+        if (!confirm('Cabut izin remedi untuk ' + nama + '?')) return;
+        var form = document.getElementById('remediForm');
+        form.querySelector('[name="give_remedi"]').value = '';
+        form.querySelector('[name="remove_remedi"]').value = '1';
+        form.querySelector('[name="id_hasil"]').value = id;
+        form.querySelector('[name="id_ujian"]').value = ujian;
+        form.submit();
     }
     </script>
 </body>

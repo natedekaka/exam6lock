@@ -253,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
             </div>
             <h4 class="fw-bold" style="color: <?= $sekolah['warna_primer'] ?>"><?= htmlspecialchars($sekolah['nama_sekolah']) ?></h4>
-            <p class="text-muted mb-0">Sistem Ujian Online - by natedekaka</p>
+            <p class="text-muted mb-0">Sistem Ujian Online</p>
             <small class="text-muted">Login Admin</small>
         </div>
         
