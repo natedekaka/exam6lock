@@ -37,10 +37,21 @@ while ($r = $res->fetch_assoc()) {
     $ujian_ids[] = $r['id'];
 }
 
-// Filter by kelas if ujian_kelas exists
-if ($has_ujian_kelas && !empty($ujian_ids) && $siswa_kelas) {
+// Filter by kelas if ujian_kelas exists (same logic as index.php)
+if ($has_ujian_kelas && !empty($ujian_ids)) {
+    $ids_ph = implode(',', array_fill(0, count($ujian_ids), '?'));
+    $stmt_uk = $conn->prepare("SELECT id_ujian, id_kelas FROM ujian_kelas WHERE id_ujian IN ($ids_ph)");
+    $stmt_uk->bind_param(str_repeat('i', count($ujian_ids)), ...$ujian_ids);
+    $stmt_uk->execute();
+    $uk_res = $stmt_uk->get_result();
+    $ujian_kelas_map = [];
+    while ($uk = $uk_res->fetch_assoc()) {
+        $ujian_kelas_map[$uk['id_ujian']][] = $uk['id_kelas'];
+    }
+    $stmt_uk->close();
+
     $kelas_id = null;
-    if ($has_kelas_table) {
+    if ($siswa_kelas && $has_kelas_table) {
         $st = $conn->prepare("SELECT id FROM kelas WHERE nama_kelas = ?");
         $st->bind_param("s", $siswa_kelas);
         $st->execute();
@@ -48,21 +59,18 @@ if ($has_ujian_kelas && !empty($ujian_ids) && $siswa_kelas) {
         if ($sr_row = $sr->fetch_assoc()) $kelas_id = $sr_row['id'];
         $st->close();
     }
-    if ($kelas_id) {
-        $filtered = [];
-        foreach ($ujian_ids as $uid) {
-            $ck = $conn->prepare("SELECT id FROM ujian_kelas WHERE id_ujian = ? AND id_kelas = ?");
-            $ck->bind_param("ii", $uid, $kelas_id);
-            $ck->execute();
-            if ($ck->get_result()->num_rows > 0) $filtered[] = $uid;
-            $ck->close();
+
+    $new_ids = [];
+    foreach ($ujian_ids as $uid) {
+        if (empty($ujian_kelas_map[$uid])) {
+            // No class restriction → show to all
+            $new_ids[] = $uid;
+        } elseif ($kelas_id && in_array($kelas_id, $ujian_kelas_map[$uid])) {
+            // Has restriction AND student's class is allowed → show
+            $new_ids[] = $uid;
         }
-        if (!empty($filtered)) {
-            // Only keep exams that have ujian_kelas entries for this class
-            $ujian_ids = $filtered;
-        }
-        // If no filter results, keep all (exam has no kelas restriction)
     }
+    $ujian_ids = $new_ids;
 }
 
 $total_ujian_tersedia = count($ujian_ids);
