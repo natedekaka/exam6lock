@@ -68,6 +68,9 @@ if ($has_ujian_kelas && !empty($ujian_ids)) {
         } elseif ($kelas_id && in_array($kelas_id, $ujian_kelas_map[$uid])) {
             // Has restriction AND student's class is allowed → show
             $new_ids[] = $uid;
+        } elseif (!$kelas_id) {
+            // Can't determine student's class ID → show (same behavior as index.php)
+            $new_ids[] = $uid;
         }
     }
     $ujian_ids = $new_ids;
