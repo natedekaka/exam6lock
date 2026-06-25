@@ -23,12 +23,12 @@
 
 | <span style="color:#059669;font-weight:700;">#</span> | <span style="color:#059669;font-weight:700;">Langkah</span> | <span style="color:#059669;font-weight:700;">Aksi</span> |
 |---|---------|------|
-| <span style="display:inline-block;background:#059669;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">1</span> | **Buka & Pilih** | Buka alamat dari guru → klik **"Mulai Ujian"** |
-| <span style="display:inline-block;background:#059669;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">2</span> | **Isi Identitas** | NIS + Nama + Kelas → klik **"Mulai Ujian"** |
+| <span style="display:inline-block;background:#059669;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">1</span> | **Login & Pilih** | Buka alamat dari guru → **Login** → pilih ujian → **"Mulai Ujian"** |
+| <span style="display:inline-block;background:#059669;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">2</span> | **Isi Identitas** | Cek NIS + Nama + Kelas (otomatis) → klik **"Mulai Ujian"** |
 | <span style="display:inline-block;background:#059669;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">3</span> | **Kerjakan Soal** | 1 soal per halaman. Navigasi ◀ ▶ atau klik nomor soal |
 | <span style="display:inline-block;background:#059669;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">4</span> | **Kirim Jawaban** | Klik **"Kirim Jawaban"** → konfirmasi → <span style="color:#059669;font-weight:700;">nilai langsung muncul</span> |
 | <span style="display:inline-block;background:#6b7280;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">5</span> | **Review** (opsional) | Klik **"Lihat Pembahasan"** setelah submit |
-| <span style="display:inline-block;background:#6b7280;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">6</span> | **Cek Riwayat** | Masukkan NIS di halaman utama → **"Cari"** |
+| <span style="display:inline-block;background:#6b7280;color:white;width:26px;height:26px;text-align:center;border-radius:50%;font-weight:700;">6</span> | **Cek Riwayat** | Login → halaman utama → **"Lihat Nilai Saya"** |
 
 ### <span style="color:#ca8a04;">🎨 Status Soal</span>
 

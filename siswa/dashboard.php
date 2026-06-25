@@ -142,11 +142,103 @@ $active_page = basename(__FILE__);
     <title>Dashboard - <?= htmlspecialchars($sekolah['nama_sekolah']) ?></title>
     <link href="../vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <style>
+        /* ─── Toast Notification ─── */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast-container .toast-item {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            color: white;
+            font-size: 0.9rem;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 380px;
+            min-width: 280px;
+        }
+        .toast-container .toast-item.show { transform: translateX(0); }
+        .toast-container .toast-item.toast-success { background: #10b981; }
+        .toast-container .toast-item.toast-error { background: #ef4444; }
+        .toast-container .toast-item.toast-warning { background: #f59e0b; }
+        .toast-container .toast-item.toast-info { background: #3b82f6; }
+        .toast-container .toast-icon { font-size: 1.3rem; flex-shrink: 0; }
+        .toast-container .toast-text { flex: 1; }
+        .toast-container .toast-text strong { display: block; font-weight: 600; }
+        .toast-container .toast-text small { opacity: 0.9; font-size: 0.85rem; }
+        
+        /* ─── Skeleton Loading ─── */
+        .skeleton-card {
+            background: #e2e8f0;
+            border-radius: 16px;
+            height: 100px;
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        .skeleton-line {
+            height: 14px;
+            border-radius: 7px;
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            margin-bottom: 8px;
+        }
+        .skeleton-line.wide { width: 80%; }
+        .skeleton-line.medium { width: 55%; }
+        .skeleton-line.narrow { width: 35%; }
+        .skeleton-stat {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .skeleton-stat .sk-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            flex-shrink: 0;
+        }
+        .skeleton-stat .sk-text { flex: 1; }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .dashboard-content {
+            animation: contentFadeIn 0.4s ease-out;
+        }
+        @keyframes contentFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
 <body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
     <?php require 'partials/navbar.php'; ?>
-
-    <main class="dashboard-container">
+    
+    <main class="dashboard-container dashboard-content">
         <!-- Greeting -->
         <div class="greeting-section">
             <h2>👋 Selamat datang, <?= htmlspecialchars($siswa_nama) ?>!</h2>
@@ -154,7 +246,7 @@ $active_page = basename(__FILE__);
         </div>
 
         <!-- Stat Cards -->
-        <div class="stat-cards">
+        <div class="stat-cards" id="statCards">
             <div class="stat-card">
                 <div class="stat-card-icon blue"><i class="bi bi-pencil-square"></i></div>
                 <div class="stat-card-info">
@@ -305,5 +397,40 @@ $active_page = basename(__FILE__);
     </footer>
 
     <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
+    <script>
+        function showToast(message, type, subtext) {
+            type = type || 'info';
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            
+            const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
+            const icon = icons[type] || icons.info;
+            
+            const item = document.createElement('div');
+            item.className = 'toast-item toast-' + type;
+            item.innerHTML = '<span class="toast-icon"><i class="bi ' + icon + '"></i></span>' +
+                '<span class="toast-text"><strong>' + message + '</strong>' +
+                (subtext ? '<small>' + subtext + '</small>' : '') + '</span>';
+            container.appendChild(item);
+            
+            requestAnimationFrame(() => { item.classList.add('show'); });
+            
+            setTimeout(() => {
+                item.classList.remove('show');
+                item.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                item.style.opacity = '0';
+                setTimeout(() => item.remove(), 300);
+            }, 4000);
+        }
+
+        // Skeleton: briefly show shimmer then reveal real content
+        document.addEventListener('DOMContentLoaded', function() {
+            const statCards = document.getElementById('statCards');
+            if (statCards) {
+                statCards.style.opacity = '1';
+                statCards.style.transition = 'opacity 0.5s ease';
+            }
+        });
+    </script>
 </body>
 </html>

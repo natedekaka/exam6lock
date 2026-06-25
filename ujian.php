@@ -1012,9 +1012,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             background: #198754;
             color: white;
         }
+
+        /* ─── Toast Notification ─── */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast-container .toast-item {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            color: white;
+            font-size: 0.9rem;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 380px;
+            min-width: 280px;
+        }
+        .toast-container .toast-item.show { transform: translateX(0); }
+        .toast-container .toast-item.toast-success { background: #10b981; }
+        .toast-container .toast-item.toast-error { background: #ef4444; }
+        .toast-container .toast-item.toast-warning { background: #f59e0b; }
+        .toast-container .toast-item.toast-info { background: #3b82f6; }
+        .toast-container .toast-icon { font-size: 1.3rem; flex-shrink: 0; }
+        .toast-container .toast-text { flex: 1; }
+        .toast-container .toast-text strong { display: block; font-weight: 600; }
+        .toast-container .toast-text small { opacity: 0.9; font-size: 0.85rem; }
+
+        /* ─── Auto-save Status Enhanced ─── */
+        #autoSaveStatus {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: transparent;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        #autoSaveStatus.saving {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        #autoSaveStatus.saved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        #autoSaveStatus.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* ─── Confirmation Modal ─── */
+        .confirm-modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .confirm-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 420px;
+            width: 90%;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
     </style>
 </head>
 <body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <!-- Header -->
     <div class="ujian-header">
         <div class="container">
@@ -1166,7 +1251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             <div class="progress-text">
                 <div class="fw-bold">Soal Terjawab</div>
                 <small class="text-muted" id="progressPercent">0/<?= count($soal_list) ?></small>
-                <small class="d-block" id="autoSaveStatus"></small>
+                <small class="d-block" id="autoSaveStatus"><i class="bi bi-cloud text-muted"></i> Auto-save</small>
             </div>
         </div>
         
@@ -1218,7 +1303,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                         <i class="bi bi-pencil-square me-2"></i>Kembali Kerjakan
                     </button>
                     <button type="button" class="btn btn-success" onclick="confirmSubmit()">
-                        <i class="bi bi-send-fill me-2"></i>Ya, Submit Sekarang
+                        <i class="bi bi-send-fill me-2"></i>Submit Sekarang
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmation Modal (step after summary) -->
+        <div id="confirmModal" class="confirm-modal" style="display: none;">
+            <div class="confirm-content text-center">
+                <div style="font-size: 3rem; margin-bottom: 10px;">🤔</div>
+                <h4 class="fw-bold mb-2">Yakin ingin mengumpulkan?</h4>
+                <p class="text-muted mb-1" id="confirmMessage">Setelah dikumpulkan, jawaban tidak bisa diubah lagi.</p>
+                <p class="text-muted small mb-3" id="confirmDetail"></p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-secondary px-4" onclick="closeConfirm()">
+                        <i class="bi bi-arrow-left me-1"></i>Kembali
+                    </button>
+                    <button type="button" class="btn btn-danger px-4" onclick="doSubmitFinal()">
+                        <i class="bi bi-send-fill me-1"></i>Ya, Kumpulkan!
                     </button>
                 </div>
             </div>
@@ -1332,8 +1435,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                         }
                         
                         updateProgress();
+                        document.getElementById('autoSaveStatus').className = 'saved';
                         document.getElementById('autoSaveStatus').innerHTML = 
-                            '<i class="bi bi-cloud-check-fill text-info"></i> Jawaban dipulihkan dari cache';
+                            '<i class="bi bi-cloud-check-fill"></i> Dipulihkan dari cache';
                     }
                 }
             } catch (e) {
@@ -1368,7 +1472,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             const kelas = document.getElementById('kelasInput').value.trim();
             
             if (!nis || !nama || !kelas) {
-                alert('Mohon lengkapi identitas terlebih dahulu!');
+                showToast('Lengkapi identitas terlebih dahulu!', 'warning');
                 return;
             }
             
@@ -1548,10 +1652,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                       elem.requestFullscreen().then(() => {
                           console.log('Fullscreen re-entered from modal');
                           if (isFinal) setTimeout(submitFinal, 500);
-                      }).catch(e => {
-                          console.error('Failed to re-enter fullscreen:', e);
-                          alert('Gagal masuk fullscreen. Coba lagi.');
-                      });
+                       }).catch(e => {
+                           console.error('Failed to re-enter fullscreen:', e);
+                           showToast('Gagal masuk fullscreen. Coba lagi.', 'warning');
+                       });
                   } else if (elem.webkitRequestFullscreen) {
                       elem.webkitRequestFullscreen();
                       if (isFinal) setTimeout(submitFinal, 500);
@@ -1770,7 +1874,7 @@ function initExamFeatures() {
         async function verifyExamCode() {
             const kode = document.getElementById('kodeUjianInput').value.trim();
             if (!kode) {
-                alert('Masukkan kode ujian!');
+                showToast('Masukkan kode ujian!', 'warning');
                 return;
             }
             
@@ -1809,12 +1913,12 @@ function initExamFeatures() {
                         <?php endif; ?>
                     });
                 } else {
-                    alert(data.message || 'Kode ujian salah!');
+                    showToast(data.message || 'Kode ujian salah!', 'error');
 
                 }
             } catch (e) {
                 console.error('Verify error:', e);
-                alert('Gagal memverifikasi kode. Silakan coba lagi. Error: ' + e.message);
+                showToast('Gagal memverifikasi kode. Silakan coba lagi.', 'error');
             }
         }
         
@@ -1848,7 +1952,7 @@ function initExamFeatures() {
             const savedFp = localStorage.getItem('exam_fp');
             
             if (savedFp && savedFp !== fp) {
-                alert('Peringatan: Anda terdeteksi更换设备. Ini mungkin tercatat.');
+                showToast('Perangkat berbeda terdeteksi!', 'warning', 'Perubahan device akan dicatat sebagai pelanggaran.');
             }
             localStorage.setItem('exam_fp', fp);
         }
@@ -1856,18 +1960,30 @@ function initExamFeatures() {
         let isSubmittingExam = false; // Flag to track intentional submission
         let examFinished = false; // Flag to indicate exam is completed
         
-        // === Toast notification (non-blocking, auto-dismiss) ===
-        function showToast(message, type) {
-            const bgColor = type === 'danger' ? '#dc3545' : type === 'warning' ? '#f59e0b' : '#333';
-            const textColor = type === 'warning' ? '#333' : 'white';
-            const toast = document.createElement('div');
-            toast.textContent = message;
-            toast.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:${bgColor};color:${textColor};padding:14px 28px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.3);z-index:2147483647;font-size:0.9rem;font-weight:500;max-width:90%;text-align:center;animation:slideUp 0.3s ease-out;pointer-events:none;`;
-            document.body.appendChild(toast);
+        // === Toast notification (stackable, auto-dismiss) ===
+        function showToast(message, type, subtext) {
+            type = type || 'info';
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            
+            const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
+            const icon = icons[type] || icons.info;
+            
+            const item = document.createElement('div');
+            item.className = 'toast-item toast-' + type;
+            item.innerHTML = '<span class="toast-icon"><i class="bi ' + icon + '"></i></span>' +
+                '<span class="toast-text"><strong>' + message + '</strong>' +
+                (subtext ? '<small>' + subtext + '</small>' : '') + '</span>';
+            container.appendChild(item);
+            
+            // Trigger animation
+            requestAnimationFrame(() => { item.classList.add('show'); });
+            
             setTimeout(() => {
-                toast.style.transition = 'opacity 0.4s ease';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 400);
+                item.classList.remove('show');
+                item.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                item.style.opacity = '0';
+                setTimeout(() => item.remove(), 300);
             }, 4000);
         }
         
@@ -1902,11 +2018,11 @@ function initExamFeatures() {
                     logViolation('tab_switch', 'Siswa meninggalkan tab/layar ujian (sleep/overlay)');
                     
                     if (violationCount >= maxViolations) {
-                        alert('Anda terlalu sering meninggalkan ujian! Jawaban akan disubmit!');
-                        submitFinal();
+                        showToast('Batas pelanggaran tercapai! Jawaban akan disubmit.', 'error', 'Anda terlalu sering meninggalkan layar ujian.');
+                        setTimeout(submitFinal, 1500);
                     } else {
                         const remaining = maxViolations - violationCount;
-                        alert('Peringatan: Anda meninggalkan layar ujian!\nPelanggaran: ' + violationCount + '/' + maxViolations + '\nSisa: ' + remaining + 'x');
+                        showToast('Meninggalkan layar ujian terdeteksi!', 'warning', 'Pelanggaran ' + violationCount + '/' + maxViolations + ' — Sisa ' + remaining + 'x');
                     }
                     awayState.isAway = false;
                 }, AWAY_GRACE_PERIOD);
@@ -1928,7 +2044,7 @@ function initExamFeatures() {
                 if (now - lastActivity > idleLimit) {
                     violationCount++;
                     logViolation('idle_too_long', 'Siswa tidak aktif terlalu lama');
-                    alert(`Peringatan: Anda terdeteksi tidak aktif!\nPelanggaran: ${violationCount}/${maxViolations}\nJawaban akan disubmit otomatis jika continue.`);
+                    showToast('Tidak aktif terlalu lama!', 'warning', 'Pelanggaran ' + violationCount + '/' + maxViolations + ' — Jawaban akan disubmit jika terus tidak aktif.');
                     if (violationCount >= maxViolations) {
                         submitFinal();
                         return;
@@ -2042,11 +2158,11 @@ function initExamFeatures() {
                         logViolation('soal_tertutup', 'Area soal tertutup overlay/ aplikasi lain (IntersectionObserver)');
                         
                         if (violationCount >= maxViolations) {
-                            alert('Area ujian tertutup berulang kali! Jawaban akan disubmit!');
-                            submitFinal();
+                            showToast('Area ujian tertutup berulang kali! Jawaban akan disubmit.', 'error');
+                            setTimeout(submitFinal, 1500);
                         } else {
                             const remaining = maxViolations - violationCount;
-                            alert('Peringatan: Area soal tertutup oleh aplikasi lain!\nPelanggaran: ' + violationCount + '/' + maxViolations + '\nSisa: ' + remaining + 'x');
+                            showToast('Area soal tertutup aplikasi lain!', 'warning', 'Pelanggaran ' + violationCount + '/' + maxViolations + ' — Sisa ' + remaining + 'x');
                         }
                     }
                 });
@@ -2091,7 +2207,7 @@ function initExamFeatures() {
             
             const kode = kodeInput.value.trim();
             if (!kode) {
-                alert('Masukkan kode ujian!');
+                showToast('Masukkan kode ujian!', 'warning');
                 return;
             }
             
@@ -2115,10 +2231,10 @@ function initExamFeatures() {
                     document.getElementById('identitySection').style.display = 'block';
                     document.getElementById('questionSection').style.display = 'none';
                 } else {
-                    alert(data.message || 'Kode ujian salah!');
+                    showToast(data.message || 'Kode ujian salah!', 'error');
                 }
             } catch (e) {
-                alert('Gagal memverifikasi kode. Silakan coba lagi.');
+                showToast('Gagal memverifikasi kode. Silakan coba lagi.', 'error');
             }
         }
         
@@ -2251,6 +2367,11 @@ function initExamFeatures() {
             
             answers[soalId] = answer;
             
+            // Show "saving..." indicator
+            const statusEl = document.getElementById('autoSaveStatus');
+            statusEl.className = 'saving';
+            statusEl.innerHTML = '<i class="bi bi-arrow-repeat"></i> Menyimpan...';
+            
             clearTimeout(window.autoSaveTimer);
             window.autoSaveTimer = setTimeout(() => {
                 fetch(API_URL, {
@@ -2268,16 +2389,32 @@ function initExamFeatures() {
                     })
                 }).then(r => r.json()).then(data => {
                     if (data.success) {
-                        document.getElementById('autoSaveStatus').innerHTML = 
-                            '<i class="bi bi-check-circle-fill text-success"></i> Tersimpan';
+                        statusEl.className = 'saved';
+                        statusEl.innerHTML = '<i class="bi bi-check-circle-fill"></i> Tersimpan';
                         setTimeout(() => {
-                            document.getElementById('autoSaveStatus').innerHTML = '';
-                        }, 2000);
+                            statusEl.className = '';
+                            statusEl.innerHTML = '<i class="bi bi-cloud text-muted"></i> Auto-save';
+                        }, 3000);
                     } else if (data.message.includes('sudah menyelesaikan')) {
-                        alert(data.message);
+                        showToast(data.message, 'error');
                         location.reload();
+                    } else {
+                        statusEl.className = 'error';
+                        statusEl.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Gagal simpan';
+                        showToast('Gagal menyimpan jawaban', 'error');
+                        setTimeout(() => {
+                            statusEl.className = '';
+                            statusEl.innerHTML = '<i class="bi bi-cloud text-muted"></i> Auto-save';
+                        }, 4000);
                     }
-                }).catch(console.error);
+                }).catch(() => {
+                    statusEl.className = 'error';
+                    statusEl.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Gagal simpan';
+                    setTimeout(() => {
+                        statusEl.className = '';
+                        statusEl.innerHTML = '<i class="bi bi-cloud text-muted"></i> Auto-save';
+                    }, 4000);
+                });
             }, 2000);
         }
         
@@ -2301,7 +2438,7 @@ function initExamFeatures() {
             
             const kode = kodeInput.value.trim();
             if (!kode) {
-                alert('Masukkan kode ujian!');
+                showToast('Masukkan kode ujian!', 'warning');
                 return;
             }
             
@@ -2323,11 +2460,11 @@ function initExamFeatures() {
                     document.getElementById('kodeValid').value = '1';
                     doSubmitFinal();
                 } else {
-                    alert(data.message || 'Kode ujian salah!');
+                    showToast(data.message || 'Kode ujian salah!', 'error');
                 }
             } catch (e) {
                 console.error('Failed to verify code:', e);
-                alert('Gagal memverifikasi kode. Silakan coba lagi.');
+                showToast('Gagal memverifikasi kode. Silakan coba lagi.', 'error');
             }
         }
         
@@ -2340,7 +2477,7 @@ function initExamFeatures() {
             const kelas = document.querySelector('input[name="kelas"]').value.trim();
             
             if (!nis || !nama || !kelas) {
-                alert('Mohon lengkapi identitas terlebih dahulu!');
+                showToast('Lengkapi identitas terlebih dahulu!', 'warning');
                 return;
             }
             
@@ -2399,14 +2536,14 @@ function initExamFeatures() {
                     // Pass penalty info to success page
                     showSuccessPage(data.skor, nis, nama, kelas, data.skor_awal || data.skor, data.penalty || 0, data.violation_count || 0);
                 } else {
-                    alert('Error: ' + data.message);
+                    showToast('Error: ' + data.message, 'error');
                     btn.innerHTML = originalText;
                     btn.disabled = false;
                 }
             })
             .catch(err => {
                 console.error(err);
-                alert('Gagal mengirim jawaban. Silakan coba lagi.');
+                showToast('Gagal mengirim jawaban. Silakan coba lagi.', 'error');
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             });
@@ -2508,7 +2645,14 @@ function initExamFeatures() {
         
         function confirmSubmit() {
             closeSummary();
-            doSubmitFinal();
+            const total = SOAL_DATA.length;
+            const answered = Object.keys(answers).length;
+            document.getElementById('confirmDetail').textContent = answered + '/' + total + ' soal terjawab';
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+        
+        function closeConfirm() {
+            document.getElementById('confirmModal').style.display = 'none';
         }
         
         // Modify submitFinal to show summary first
@@ -2708,13 +2852,16 @@ function initExamFeatures() {
             clearTimeout(window.localSaveTimer);
             window.localSaveTimer = setTimeout(() => {
                 saveToLocalStorage();
-                if (document.getElementById('autoSaveStatus')) {
-                    document.getElementById('autoSaveStatus').innerHTML = 
-                        '<i class="bi bi-device-hdd-fill text-secondary"></i> Cache lokal';
+                const statusEl = document.getElementById('autoSaveStatus');
+                if (statusEl) {
+                    statusEl.className = 'saved';
+                    statusEl.innerHTML = '<i class="bi bi-device-hdd-fill"></i> Tersimpan (lokal)';
                 }
                 setTimeout(() => {
                     if (document.getElementById('autoSaveStatus')) {
-                        document.getElementById('autoSaveStatus').innerHTML = '';
+                        const se = document.getElementById('autoSaveStatus');
+                        se.className = '';
+                        se.innerHTML = '<i class="bi bi-cloud text-muted"></i> Auto-save';
                     }
                 }, 2000);
             }, 1000);
@@ -2779,7 +2926,7 @@ function initExamFeatures() {
                     const timeMsg = remainingJam > 0 ? 
                         remainingJam + ' jam ' + remainingMenit + ' menit' : 
                         remainingMenit + ' menit';
-                    alert('PERHATIAN: Waktu tersisa kurang dari ' + timeMsg + '!');
+                    showToast('Waktu tersisa ' + timeMsg + '!', 'warning', 'Segera selesaikan jawaban Anda.');
                 }
             }
             // Last 1 minute: Play tick sound
@@ -2849,15 +2996,34 @@ function initExamFeatures() {
                                 console.log('Auto-saved to server successfully');
                                 const statusEl = document.getElementById('autoSaveStatus');
                                 if (statusEl) {
-                                    statusEl.innerHTML = '<i class="bi bi-cloud-check-fill text-success"></i> Tersimpan di server';
+                                    statusEl.className = 'saved';
+                                    statusEl.innerHTML = '<i class="bi bi-cloud-check-fill"></i> Tersimpan di server';
                                     setTimeout(() => {
                                         if (document.getElementById('autoSaveStatus')) {
-                                            document.getElementById('autoSaveStatus').innerHTML = '';
+                                            statusEl.className = '';
+                                            statusEl.innerHTML = '<i class="bi bi-cloud text-muted"></i> Auto-save';
                                         }
                                     }, 3000);
                                 }
+                            } else {
+                                const statusEl = document.getElementById('autoSaveStatus');
+                                if (statusEl) {
+                                    statusEl.className = 'error';
+                                    statusEl.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Gagal sinkron';
+                                }
                             }
-                        }).catch(e => console.error('Auto-save failed:', e));
+                        }).catch(e => {
+                            console.error('Auto-save failed:', e);
+                            const statusEl = document.getElementById('autoSaveStatus');
+                            if (statusEl) {
+                                statusEl.className = 'error';
+                                statusEl.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Gagal sinkron';
+                                setTimeout(() => {
+                                    statusEl.className = '';
+                                    statusEl.innerHTML = '<i class="bi bi-cloud text-muted"></i> Auto-save';
+                                }, 4000);
+                            }
+                        });
                     }
                 }
             }
@@ -2901,6 +3067,33 @@ function initExamFeatures() {
 
         setInterval(updatePerSoalTimer, 1000);
         <?php endif; ?>
+        
+        // ─── Swipe Gesture for Question Navigation ───
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const SWIPE_THRESHOLD = 60; // minimum px to trigger swipe
+        
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        
+        document.addEventListener('touchend', function(e) {
+            if (isSubmittingExam || examFinished) return;
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+            
+            // Only horizontal swipes, prevent triggering on scroll
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+                if (deltaX > 0) {
+                    // Swipe right → previous
+                    prevPage();
+                } else {
+                    // Swipe left → next
+                    nextPage();
+                }
+            }
+        }, { passive: true });
         
         init();
         

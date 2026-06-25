@@ -262,6 +262,88 @@ if (!empty($ujian_ids)) {
             font-size: 5rem;
             color: #dee2e6;
         }
+
+        /* ---- Toast Notification ---- */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast-container .toast-item {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            color: white;
+            font-size: 0.9rem;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 380px;
+            min-width: 280px;
+        }
+        .toast-container .toast-item.show {
+            transform: translateX(0);
+        }
+        .toast-container .toast-item.toast-success { background: #10b981; }
+        .toast-container .toast-item.toast-error { background: #ef4444; }
+        .toast-container .toast-item.toast-warning { background: #f59e0b; }
+        .toast-container .toast-item.toast-info { background: #3b82f6; }
+        .toast-container .toast-icon { font-size: 1.3rem; flex-shrink: 0; }
+        .toast-container .toast-text { flex: 1; }
+        .toast-container .toast-text strong { display: block; font-weight: 600; }
+        .toast-container .toast-text small { opacity: 0.9; font-size: 0.85rem; }
+
+        /* ---- Skeleton Loading ---- */
+        .skeleton {
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease-in-out infinite;
+            border-radius: 8px;
+        }
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-card {
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        }
+        .skeleton-card .skeleton-header {
+            height: 70px;
+            border-radius: 16px 16px 0 0;
+            margin-bottom: 0;
+        }
+        .skeleton-card .skeleton-body {
+            padding: 25px;
+        }
+        .skeleton-card .skeleton-line {
+            height: 14px;
+            margin-bottom: 12px;
+        }
+        .skeleton-card .skeleton-line:last-child {
+            width: 60%;
+        }
+        .skeleton-card .skeleton-btn {
+            height: 44px;
+            width: 100%;
+            border-radius: 25px;
+            margin-top: 16px;
+        }
+    </style>
+    <style id="skeleton-hide">
+        .ujian-card { display: none; }
+        .skeleton-wrapper { display: flex; }
     </style>
 </head>
 <body>
@@ -300,6 +382,40 @@ if (!empty($ujian_ids)) {
             </div>
         </div>
     </section>
+
+    <?php if ($is_siswa_logged_in): ?>
+    <!-- Cek Riwayat Nilai (hanya untuk user yang sudah login) -->
+    <section class="py-4">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+                        <div class="card-body p-4">
+                            <div class="row align-items-center">
+                                <div class="col-md-5 mb-3 mb-md-0">
+                                    <div class="d-flex align-items-center">
+                                        <div class="info-icon me-3" style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, <?= $sekolah['warna_primer'] ?> 0%, <?= $sekolah['warna_sekunder'] ?> 100%); color: white;">
+                                            <i class="bi bi-bar-chart-fill" style="font-size: 1.3rem;"></i>
+                                        </div>
+                                        <div>
+                                            <h5 class="fw-bold mb-1">Riwayat Nilai</h5>
+                                            <p class="text-muted mb-0 small">Lihat hasil ujian yang sudah dikerjakan</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-7 text-md-end">
+                                    <a href="riwayat.php?nis=<?= urlencode($_SESSION['siswa_nis']) ?>" class="btn btn-lg text-white" style="background: linear-gradient(135deg, <?= $sekolah['warna_primer'] ?> 0%, <?= $sekolah['warna_sekunder'] ?> 100%); border: none;">
+                                        <i class="bi bi-eye me-1"></i>Lihat Nilai Saya
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
 
     <?php if ($is_siswa_logged_in): ?>
     <?php
@@ -347,8 +463,26 @@ if (!empty($ujian_ids)) {
                 </div>
             </div>
             
-            <?php if (!empty($ujian_array)): ?>
-            <div class="row g-4">
+            <!-- Skeleton Loading -->
+            <div class="skeleton-wrapper row g-4" id="skeletonCards">
+                <?php for ($s = 0; $s < min(6, max(3, count($ujian_array) ?: 3)); $s++): ?>
+                <div class="col-md-6 col-lg-4">
+                    <div class="skeleton-card">
+                        <div class="skeleton skeleton-header"></div>
+                        <div class="skeleton-body">
+                            <div class="skeleton skeleton-line" style="width: 90%;"></div>
+                            <div class="skeleton skeleton-line" style="width: 70%;"></div>
+                            <div class="skeleton skeleton-line" style="width: 50%;"></div>
+                            <div class="skeleton skeleton-line" style="width: 40%;"></div>
+                            <div class="skeleton skeleton-btn"></div>
+                        </div>
+                    </div>
+                </div>
+                <?php endfor; ?>
+            </div>
+
+            <div class="row g-4" id="ujianCards" style="display: none;">
+                <?php if (!empty($ujian_array)): ?>
                 <?php foreach ($ujian_array as $ujian): ?>
                 <div class="col-md-6 col-lg-4">
                     <div class="ujian-card">
@@ -422,7 +556,6 @@ if (!empty($ujian_ids)) {
                     </div>
                 </div>
                 <?php endforeach; ?>
-            </div>
             <?php else: ?>
             <div class="empty-state">
                 <i class="bi bi-inbox empty-icon"></i>
@@ -430,6 +563,7 @@ if (!empty($ujian_ids)) {
                 <p class="text-muted">Silakan hubungi guru atau administrator untuk informasi lebih lanjut.</p>
             </div>
             <?php endif; ?>
+            </div>
         </div>
     </section>
 
@@ -447,6 +581,45 @@ if (!empty($ujian_ids)) {
             </div>
         </div>
     </footer>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+    // ─── Toast Notification ──────────────────────────
+    window.showToast = function(message, type) {
+        if (!type) type = 'info';
+        var container = document.getElementById('toastContainer');
+        if (!container) return;
+        var icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
+        var titles = { success: 'Berhasil!', error: 'Gagal!', warning: 'Peringatan!', info: 'Informasi' };
+        var toast = document.createElement('div');
+        toast.className = 'toast-item toast-' + type;
+        toast.innerHTML = '<i class="bi ' + (icons[type] || icons.info) + ' toast-icon"></i>' +
+            '<div class="toast-text"><strong>' + (titles[type] || titles.info) + '</strong><small>' + message + '</small></div>';
+        container.appendChild(toast);
+        requestAnimationFrame(function() { toast.classList.add('show'); });
+        setTimeout(function() {
+            toast.classList.remove('show');
+            setTimeout(function() { toast.remove(); }, 400);
+        }, 3500);
+    };
+
+    // ─── Skeleton → Real Cards ──────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        var skeleton = document.getElementById('skeletonCards');
+        var realCards = document.getElementById('ujianCards');
+        if (skeleton && realCards) {
+            setTimeout(function() {
+                skeleton.style.display = 'none';
+                realCards.style.display = 'flex';
+                // Remove the style tag that hides ujian-card
+                var styleEl = document.getElementById('skeleton-hide');
+                if (styleEl) styleEl.remove();
+            }, 400);
+        }
+    });
+    </script>
 
     <script src="vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
 </body>

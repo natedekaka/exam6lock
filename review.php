@@ -1,8 +1,14 @@
 <?php
-// review.php - Halaman Review Jawaban Siswa
+// review.php - Halaman Review Jawaban Siswa (wajib login)
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+
+// Wajib login — cegah akses publik ke detail jawaban siswa
+if (!isset($_SESSION['siswa_id'])) {
+    header('Location: siswa/login.php');
+    exit;
 }
 
 require_once 'config/database.php';
@@ -10,11 +16,12 @@ require_once 'config/init_sekolah.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
-if (!isset($_GET['nis']) || empty($_GET['nis']) || !isset($_GET['id_ujian'])) {
+if (!isset($_GET['id_ujian'])) {
     die("Parameter tidak valid");
 }
 
-$nis = trim($_GET['nis']);
+// Pakai NIS dari session, bukan GET — amankan dari akses silang
+$nis = $_SESSION['siswa_nis'];
 $id_ujian = (int)$_GET['id_ujian'];
 
 $stmt = $conn->prepare("SELECT * FROM ujian WHERE id = ?");

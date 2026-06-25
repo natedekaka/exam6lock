@@ -1,8 +1,14 @@
 <?php
-// riwayat.php - Halaman Riwayat Nilai Siswa
+// riwayat.php - Halaman Riwayat Nilai Siswa (wajib login)
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+
+// Wajib login — amankan dari akses publik
+if (!isset($_SESSION['siswa_id'])) {
+    header('Location: siswa/login.php');
+    exit;
 }
 
 require_once 'config/database.php';
@@ -10,11 +16,9 @@ require_once 'config/init_sekolah.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
-if (!isset($_GET['nis']) || empty($_GET['nis'])) {
-    die("NIS tidak valid");
-}
-
-$nis = trim($_GET['nis']);
+// Selalu pakai NIS dari session, bukan dari GET parameter
+// untuk mencegah siswa lain melihat nilai siswa lain
+$nis = $_SESSION['siswa_nis'];
 
 // Cek apakah kolom tampilkan_review sudah ada
 $has_review_col = false;

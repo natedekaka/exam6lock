@@ -93,7 +93,7 @@ Aplikasi ujian online berbasis PHP dan MySQL untuk sekolah dengan fitur keamanan
 - **Review Jawaban** setelah submit (jika diaktifkan)
   - Filter: semua, benar saja, salah saja
   - Tampilkan skor per soal
-- **Riwayat Nilai** — lihat history ujian via NIS (tanpa login)
+- **Riwayat Nilai** — lihat history ujian sendiri (setelah login, via session)
 - **Profil Siswa** — lihat & edit profil
 - **Ganti Password** — ubah password sendiri
 - **Pengumuman** — daftar pengumuman (filter by kelas)
@@ -216,7 +216,7 @@ exam6lock/
 ├── index.php                       # Landing page (hero + daftar ujian)
 ├── ujian.php                       # Halaman ujian siswa (soal, timer, submit)
 ├── review.php                      # Review jawaban setelah submit
-├── riwayat.php                     # Riwayat nilai (by NIS, tanpa login)
+├── riwayat.php                     # Riwayat nilai (wajib login, via session)
 ├── rekap_nilai.php                 # Rekap nilai publik
 ├── petunjuk_siswa.md               # Petunjuk ujian untuk siswa
 ├── petunjuk_siswa.pdf              # Petunjuk ujian (PDF)
