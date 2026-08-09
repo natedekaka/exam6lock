@@ -80,16 +80,19 @@ Aplikasi ujian online berbasis PHP dan MySQL untuk sekolah dengan fitur keamanan
 - **Landing Page** — daftar ujian yang tersedia (dengan filter jadwal & kelas)
   - Guest: "Login untuk Mengerjakan"
   - Login: "Mulai Ujian"
+  - **Skeleton loading** dengan shimmer animation saat memuat data ujian
 - **Pra-check Ujian**: Jika sudah pernah submit & tidak ada izin remedi → halaman blokir
 - **Verifikasi Kode Rahasia** sebelum ujian (jika diaktifkan)
 - **Sistem Ujian Interaktif** dengan timer countdown
   - 1 soal per halaman (load cepat)
   - Navigasi grid nomor soal (lompat ke soal tertentu)
   - Indicator warna: abu (belum), hijau (dijawab), biru (aktif)
-  - Previous/Next button
-  - Auto-save jawaban setiap 30 detik (background)
+  - Previous/Next button + **swipe kiri/kanan** di layar sentuh
+  - Auto-save jawaban setiap 30 detik (background) dengan **indikator status live** (saving/saved/error)
   - Load jawaban tersimpan jika refresh/halaman crash
   - Timer per-soal (jika diaktifkan)
+  - **Toast notifications** menggantikan popup alert (peringatan pelanggaran, auto-save, dll)
+  - **Konfirmasi 2 langkah** sebelum submit: ringkasan jawaban → modal "Yakin ingin mengumpulkan?"
 - **Review Jawaban** setelah submit (jika diaktifkan)
   - Filter: semua, benar saja, salah saja
   - Tampilkan skor per soal

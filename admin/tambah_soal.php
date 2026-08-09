@@ -3,7 +3,7 @@
 
 session_start();
 
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: ../uploads/;");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;");
 header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");
 header("Referrer-Policy: strict-origin-when-cross-origin");
@@ -132,8 +132,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['simpan_soal'])) {
         $edit_id = isset($_POST['edit_id']) ? (int)$_POST['edit_id'] : 0;
         $original_updated = $_POST['original_updated'] ?? '';
         
-        if (empty($pertanyaan) || empty($opsi_a) || empty($opsi_b) || empty($opsi_c) || empty($opsi_d) || empty($opsi_e)) {
-            $message = 'Semua field wajib diisi';
+        $field_wajib = [
+            'Pertanyaan' => $pertanyaan,
+            'Opsi A' => $opsi_a,
+            'Opsi B' => $opsi_b,
+            'Opsi C' => $opsi_c,
+            'Opsi D' => $opsi_d,
+            'Opsi E' => $opsi_e,
+        ];
+        $field_kosong = array_keys(array_filter($field_wajib, fn($v) => $v === ''));
+
+        if (!empty($field_kosong)) {
+            $message = 'Field wajib diisi masih kosong: ' . implode(', ', $field_kosong);
             $message_type = 'danger';
         } else {
             $gambar_pertanyaan = null;
@@ -822,7 +832,7 @@ if (isset($_SESSION['import_message'])) {
                     <?php endif; ?>
                     
                     <div class="question-box">
-                        <label class="form-label fw-bold"><i class="bi bi-chat-left-text me-2"></i>Pertanyaan</label>
+                        <label class="form-label fw-bold"><i class="bi bi-chat-left-text me-2"></i>Pertanyaan <span class="text-danger">*</span></label>
                         <textarea name="pertanyaan" class="form-control mb-3" rows="8" placeholder="Masukkan pertanyaan soal..." required><?= $edit_soal ? htmlspecialchars($edit_soal['pertanyaan']) : '' ?></textarea>
                         
                         <label class="form-label"><i class="bi bi-image me-1"></i>Gambar Pertanyaan (opsional)</label>
@@ -846,7 +856,7 @@ if (isset($_SESSION['import_message'])) {
                     <div class="row">
                         <div class="col-md-6">
                             <div class="opsi-card">
-                                <label class="form-label fw-bold"><span class="opsi-label opsi-a">A</span>Opsi A</label>
+                                <label class="form-label fw-bold"><span class="opsi-label opsi-a">A</span>Opsi A <span class="text-danger">*</span></label>
                                 <textarea name="opsi_a" class="form-control mb-2" rows="3" placeholder="Masukkan opsi A..." required><?= $edit_soal ? htmlspecialchars($edit_soal['opsi_a']) : '' ?></textarea>
                                 <div class="file-upload-wrapper">
                                     <input type="file" name="gambar_a" accept="image/*" onchange="updateFileName(this, 'label-a')">
@@ -867,7 +877,7 @@ if (isset($_SESSION['import_message'])) {
                         
                         <div class="col-md-6">
                             <div class="opsi-card">
-                                <label class="form-label fw-bold"><span class="opsi-label opsi-b">B</span>Opsi B</label>
+                                <label class="form-label fw-bold"><span class="opsi-label opsi-b">B</span>Opsi B <span class="text-danger">*</span></label>
                                 <textarea name="opsi_b" class="form-control mb-2" rows="3" placeholder="Masukkan opsi B..." required><?= $edit_soal ? htmlspecialchars($edit_soal['opsi_b']) : '' ?></textarea>
                                 <div class="file-upload-wrapper">
                                     <input type="file" name="gambar_b" accept="image/*" onchange="updateFileName(this, 'label-b')">
@@ -888,7 +898,7 @@ if (isset($_SESSION['import_message'])) {
                         
                         <div class="col-md-6">
                             <div class="opsi-card">
-                                <label class="form-label fw-bold"><span class="opsi-label opsi-c">C</span>Opsi C</label>
+                                <label class="form-label fw-bold"><span class="opsi-label opsi-c">C</span>Opsi C <span class="text-danger">*</span></label>
                                 <textarea name="opsi_c" class="form-control mb-2" rows="3" placeholder="Masukkan opsi C..." required><?= $edit_soal ? htmlspecialchars($edit_soal['opsi_c']) : '' ?></textarea>
                                 <div class="file-upload-wrapper">
                                     <input type="file" name="gambar_c" accept="image/*" onchange="updateFileName(this, 'label-c')">
@@ -909,7 +919,7 @@ if (isset($_SESSION['import_message'])) {
                         
                         <div class="col-md-6">
                             <div class="opsi-card">
-                                <label class="form-label fw-bold"><span class="opsi-label opsi-d">D</span>Opsi D</label>
+                                <label class="form-label fw-bold"><span class="opsi-label opsi-d">D</span>Opsi D <span class="text-danger">*</span></label>
                                 <textarea name="opsi_d" class="form-control mb-2" rows="3" placeholder="Masukkan opsi D..." required><?= $edit_soal ? htmlspecialchars($edit_soal['opsi_d']) : '' ?></textarea>
                                 <div class="file-upload-wrapper">
                                     <input type="file" name="gambar_d" accept="image/*" onchange="updateFileName(this, 'label-d')">
@@ -930,7 +940,7 @@ if (isset($_SESSION['import_message'])) {
                         
                         <div class="col-md-6">
                             <div class="opsi-card">
-                                <label class="form-label fw-bold"><span class="opsi-label opsi-e">E</span>Opsi E</label>
+                                <label class="form-label fw-bold"><span class="opsi-label opsi-e">E</span>Opsi E <span class="text-danger">*</span></label>
                                 <textarea name="opsi_e" class="form-control mb-2" rows="3" placeholder="Masukkan opsi E..." required><?= $edit_soal ? htmlspecialchars($edit_soal['opsi_e']) : '' ?></textarea>
                                 <div class="file-upload-wrapper">
                                     <input type="file" name="gambar_e" accept="image/*" onchange="updateFileName(this, 'label-e')">
@@ -984,8 +994,8 @@ if (isset($_SESSION['import_message'])) {
                         <div class="col-md-3">
                             <div class="opsi-card">
                                 <label class="form-label fw-bold"><i class="bi bi-clock me-1"></i>Timer/Soal (dtk)</label>
-                                <input type="number" name="timer_soal" class="form-control" value="<?= $edit_soal ? (int)($edit_soal['timer_soal'] ?? 0) : 0 ?>" min="0" max="3600" placeholder="0 = tidak используется">
-                                <small class="text-muted">0 = tidak используется</small>
+                                <input type="number" name="timer_soal" class="form-control" value="<?= $edit_soal ? (int)($edit_soal['timer_soal'] ?? 0) : 0 ?>" min="0" max="3600" placeholder="0 = tidak digunakan">
+                                <small class="text-muted">0 = tidak digunakan</small>
                             </div>
                         </div>
                     </div>
@@ -1165,7 +1175,7 @@ if (isset($_SESSION['import_message'])) {
         <?php endif; ?>
     </div>
 
-    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
+    <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
     <script>
         function handleUjianChange(select) {
             if (select.value === 'all') {
@@ -1240,22 +1250,30 @@ if (isset($_SESSION['import_message'])) {
         }
         
         document.getElementById('soalForm').addEventListener('submit', function(e) {
-            const pertanyaan = document.querySelector('textarea[name="pertanyaan"]').value.trim();
-            const opsiA = document.querySelector('textarea[name="opsi_a"]').value.trim();
-            const opsiB = document.querySelector('textarea[name="opsi_b"]').value.trim();
-            const opsiC = document.querySelector('textarea[name="opsi_c"]').value.trim();
-            const opsiD = document.querySelector('textarea[name="opsi_d"]').value.trim();
-            const opsiE = document.querySelector('textarea[name="opsi_e"]').value.trim();
+            const fields = [
+                { name: 'Pertanyaan', el: document.querySelector('textarea[name="pertanyaan"]') },
+                { name: 'Opsi A', el: document.querySelector('textarea[name="opsi_a"]') },
+                { name: 'Opsi B', el: document.querySelector('textarea[name="opsi_b"]') },
+                { name: 'Opsi C', el: document.querySelector('textarea[name="opsi_c"]') },
+                { name: 'Opsi D', el: document.querySelector('textarea[name="opsi_d"]') },
+                { name: 'Opsi E', el: document.querySelector('textarea[name="opsi_e"]') }
+            ];
+            const kosong = fields.filter(f => !f.el.value.trim());
             
-            if (!pertanyaan || !opsiA || !opsiB || !opsiC || !opsiD || !opsiE) {
+            if (kosong.length > 0) {
                 e.preventDefault();
-                alert('Semua field wajib diisi');
+                const nama = kosong.map(f => f.name).join(', ');
+                alert('Field wajib diisi masih kosong: ' + nama);
+                kosong[0].el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                kosong[0].el.focus();
                 return;
             }
             
+            const pertanyaan = fields[0].el.value.trim();
             if (pertanyaan.length < 5) {
                 e.preventDefault();
                 alert('Pertanyaan terlalu pendek');
+                fields[0].el.focus();
                 return;
             }
         });
@@ -1324,7 +1342,6 @@ if (isset($_SESSION['import_message'])) {
     </div>
 
 
-    <script src="../vendor/bootstrap/bootstrap.bundle.min.js" defer></script>
     <script>
         // Bulk actions functionality
         document.getElementById('selectAll')?.addEventListener('change', function() {
