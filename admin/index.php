@@ -1,10 +1,10 @@
 <?php
 // admin/index.php - Dashboard Admin (Manajemen Ujian)
 
+require_once "../config/security_headers.php";
+
 session_start();
 
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
@@ -38,20 +38,11 @@ $column_flags = [
     'durasi_per_soal'      => 'durasi_per_soal',
 ];
 $has = array_fill_keys(array_unique(array_values($column_flags)), false);
-try {
-    $existing = $conn->query("SHOW COLUMNS FROM ujian");
-    if ($existing) {
-        $col_names = [];
-        while ($c = $existing->fetch_assoc()) $col_names[] = $c['Field'];
-        $existing->free();
-        foreach ($column_flags as $col => $flag) {
-            if (in_array($col, $col_names)) {
-                $has[$flag] = true;
-            }
-        }
+$col_names = $db->getColumns('ujian');
+foreach ($column_flags as $col => $flag) {
+    if (in_array($col, $col_names)) {
+        $has[$flag] = true;
     }
-} catch (Exception $e) {
-    // all remain false
 }
 $has_new_columns = $has['new_columns'];
 $has_tampilkan_skor = $has['tampilkan_skor'];

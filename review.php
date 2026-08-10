@@ -36,11 +36,7 @@ if (!$ujian) {
 }
 
 // Cek apakah kolom tampilkan_review ada
-$has_review_col = false;
-$result_cols = $conn->query("SHOW COLUMNS FROM ujian LIKE 'tampilkan_review'");
-if ($result_cols && $result_cols->num_rows > 0) {
-    $has_review_col = true;
-}
+$has_review_col = $db->columnExists('ujian', 'tampilkan_review');
 
 if ($has_review_col && (!isset($ujian['tampilkan_review']) || $ujian['tampilkan_review'] !== 'ya')) {
     die("Fitur review tidak diaktifkan untuk ujian ini");

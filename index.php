@@ -1,6 +1,8 @@
 <?php
 // index.php - Halaman Depan (List Ujian)
 
+require_once 'config/security_headers.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,9 +12,9 @@ require_once 'config/init_sekolah.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
-$has_scheduling = $conn->query("SHOW COLUMNS FROM ujian LIKE 'tanggal_mulai'")->num_rows > 0;
-$has_ujian_kelas = $conn->query("SHOW TABLES LIKE 'ujian_kelas'")->num_rows > 0;
-$has_kelas_table = $conn->query("SHOW TABLES LIKE 'kelas'")->num_rows > 0;
+$has_scheduling = $db->columnExists('ujian', 'tanggal_mulai');
+$has_ujian_kelas = $db->tableExists('ujian_kelas');
+$has_kelas_table = $db->tableExists('kelas');
 
 $ujian_ids = [];
 $ujian_array = [];
@@ -100,8 +102,8 @@ if (!empty($ujian_ids)) {
     }
     $stmt->close();
     
-    $result_cols = $conn->query("SHOW COLUMNS FROM ujian LIKE 'waktu_tersedia'");
-    if ($result_cols && $result_cols->num_rows > 0) {
+    $result_cols = $db->columnExists('ujian', 'waktu_tersedia');
+    if ($result_cols) {
         $stmt = $conn->prepare("SELECT id, waktu_tersedia FROM ujian WHERE id IN ($ids_placeholder)");
         $stmt->bind_param(str_repeat('i', count($ujian_ids)), ...$ujian_ids);
         $stmt->execute();
@@ -122,18 +124,11 @@ if (!empty($ujian_ids)) {
     <meta name="description" content="Sistem Ujian Online - <?= htmlspecialchars($sekolah['nama_sekolah']) ?>">
     <title>Sistem Ujian Online</title>
     
-    <link href="vendor/fonts/poppins.css" rel="stylesheet">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif; }
-    </style>
+    <link href="assets/css/common.css" rel="stylesheet">
     <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
     
     <style>
-        * {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif;
-        }
-        
         .hero-section {
             background: linear-gradient(135deg, <?= $sekolah['warna_primer'] ?> 0%, <?= $sekolah['warna_sekunder'] ?> 100%);
             padding: 60px 0;
@@ -263,83 +258,7 @@ if (!empty($ujian_ids)) {
             color: #dee2e6;
         }
 
-        /* ---- Toast Notification ---- */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            pointer-events: none;
-        }
-        .toast-container .toast-item {
-            pointer-events: auto;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 14px 20px;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-            color: white;
-            font-size: 0.9rem;
-            transform: translateX(120%);
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            max-width: 380px;
-            min-width: 280px;
-        }
-        .toast-container .toast-item.show {
-            transform: translateX(0);
-        }
-        .toast-container .toast-item.toast-success { background: #10b981; }
-        .toast-container .toast-item.toast-error { background: #ef4444; }
-        .toast-container .toast-item.toast-warning { background: #f59e0b; }
-        .toast-container .toast-item.toast-info { background: #3b82f6; }
-        .toast-container .toast-icon { font-size: 1.3rem; flex-shrink: 0; }
-        .toast-container .toast-text { flex: 1; }
-        .toast-container .toast-text strong { display: block; font-weight: 600; }
-        .toast-container .toast-text small { opacity: 0.9; font-size: 0.85rem; }
-
-        /* ---- Skeleton Loading ---- */
-        .skeleton {
-            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-            background-size: 200% 100%;
-            animation: skeleton-shimmer 1.5s ease-in-out infinite;
-            border-radius: 8px;
-        }
-        @keyframes skeleton-shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-        .skeleton-card {
-            border: none;
-            border-radius: 16px;
-            overflow: hidden;
-            background: white;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
-        }
-        .skeleton-card .skeleton-header {
-            height: 70px;
-            border-radius: 16px 16px 0 0;
-            margin-bottom: 0;
-        }
-        .skeleton-card .skeleton-body {
-            padding: 25px;
-        }
-        .skeleton-card .skeleton-line {
-            height: 14px;
-            margin-bottom: 12px;
-        }
-        .skeleton-card .skeleton-line:last-child {
-            width: 60%;
-        }
-        .skeleton-card .skeleton-btn {
-            height: 44px;
-            width: 100%;
-            border-radius: 25px;
-            margin-top: 16px;
-        }
+        /* ---- Skeleton Loading (in common.css) ---- */
     </style>
     <style id="skeleton-hide">
         .ujian-card { display: none; }

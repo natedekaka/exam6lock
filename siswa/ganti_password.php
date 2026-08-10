@@ -1,7 +1,6 @@
 <?php
 session_start();
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
+require_once '../config/security_headers.php';
 
 require_once '../config/database.php';
 require_once '../config/init_sekolah.php';

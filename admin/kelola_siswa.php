@@ -1,7 +1,7 @@
 <?php
+require_once "../config/security_headers.php";
+
 session_start();
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');

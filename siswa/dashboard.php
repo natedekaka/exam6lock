@@ -1,8 +1,7 @@
 <?php
 session_start();
 
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
+require_once '../config/security_headers.php';
 
 require_once '../config/database.php';
 require_once '../config/init_sekolah.php';
@@ -22,9 +21,9 @@ $siswa_kelas = $_SESSION['siswa_kelas'] ?? '';
 // ---- STAT QUERIES ----
 
 // 1. Total ujian aktif yang tersedia (filter jadwal + kelas)
-$has_scheduling  = $conn->query("SHOW COLUMNS FROM ujian LIKE 'tanggal_mulai'")->num_rows > 0;
-$has_ujian_kelas = $conn->query("SHOW TABLES LIKE 'ujian_kelas'")->num_rows > 0;
-$has_kelas_table = $conn->query("SHOW TABLES LIKE 'kelas'")->num_rows > 0;
+$has_scheduling  = $db->columnExists('ujian', 'tanggal_mulai');
+$has_ujian_kelas = $db->tableExists('ujian_kelas');
+$has_kelas_table = $db->tableExists('kelas');
 
 $now = date('Y-m-d H:i:s');
 $ujian_query = "SELECT id FROM ujian WHERE status = 'aktif'";

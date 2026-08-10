@@ -9,10 +9,13 @@ $password = getenv('DB_PASS') ?: 'rootpass';
 $database = getenv('DB_NAME') ?: 'ujian_online';
 $port = getenv('DB_PORT') ?: '3306';
 
+require_once __DIR__ . '/log_helper.php';
+
 $conn = new mysqli($host, $user, $password, $database, $port);
 
 if ($conn->connect_error) {
-    die("Koneksi gagal: " . $conn->connect_error);
+    logError('Database connection failed: ' . $conn->connect_error, ['host' => $host, 'database' => $database]);
+    die("Koneksi gagal. Silakan hubungi administrator.");
 }
 
 $conn->query("SET time_zone = '+07:00'");

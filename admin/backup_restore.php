@@ -1,8 +1,7 @@
 <?php
-session_start();
+require_once '../config/security_headers.php';
 
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
+session_start();
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
@@ -14,8 +13,8 @@ if (!isset($_SESSION['admin_role']) || $_SESSION['admin_role'] !== 'super_admin'
     echo '<link href="../vendor/bootstrap/bootstrap.min.css" rel="stylesheet">';
     echo '<link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">';
     echo '<link href="../vendor/fonts/inter.css" rel="stylesheet">';
-    echo '<style>body{background:#f1f5f9;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:Inter,sans-serif;}</style>';
-    echo '</head><body><div class="card shadow-sm" style="max-width:500px"><div class="card-body text-center p-5">';
+    echo '<link href="assets/css/admin.css" rel="stylesheet">';
+    echo '</head><body class="access-denied-page"><div class="card shadow-sm" style="max-width:500px"><div class="card-body text-center p-5">';
     echo '<i class="bi bi-shield-exclamation text-danger" style="font-size:4rem;"></i>';
     echo '<h3 class="fw-bold mt-3">Akses Ditolak</h3>';
     echo '<p class="text-muted">Hanya Super Admin yang dapat mengakses halaman ini.</p>';
@@ -343,9 +342,7 @@ function format_bytes($bytes, $precision = 2) {
     <link href="../vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link href="../vendor/fonts/inter.css" rel="stylesheet">
-    <style>
-        .warning-box { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-    </style>
+    <link href="assets/css/admin.css" rel="stylesheet">
 </head>
 <body>
     <?php $active_page = basename(__FILE__); require 'partials/sidebar.php'; ?>

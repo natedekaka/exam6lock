@@ -4,8 +4,8 @@ require_once 'config/init_sekolah.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
-$checkSkorAwal = $conn->query("SHOW COLUMNS FROM hasil_ujian LIKE 'skor_awal'");
-if (!$checkSkorAwal || $checkSkorAwal->num_rows === 0) {
+$checkSkorAwal = $db->columnExists('hasil_ujian', 'skor_awal');
+if (!$checkSkorAwal) {
     $conn->query("ALTER TABLE hasil_ujian ADD COLUMN skor_awal INT DEFAULT NULL AFTER total_skor");
 }
 

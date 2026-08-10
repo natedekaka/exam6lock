@@ -1,6 +1,8 @@
 <?php
 // ujian.php - Halaman Ujian Siswa (Tampilan Baru)
 
+require_once 'config/security_headers.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,6 +12,7 @@ unset($_SESSION['exam_code_verified']);
 
 require_once 'config/database.php';
 require_once 'config/init_sekolah.php';
+require_once 'config/exam_helper.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
@@ -33,81 +36,42 @@ if (!$ujian) {
     die("Ujian tidak ditemukan");
 }
 
-$has_scheduling = $conn->query("SHOW COLUMNS FROM ujian LIKE 'tanggal_mulai'")->num_rows > 0;
-if ($has_scheduling) {
-    $now = date('Y-m-d H:i:s');
-    if (!empty($ujian['tanggal_mulai']) && $now < $ujian['tanggal_mulai']) {
-        ?>
-        <!DOCTYPE html>
-        <html lang="id">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Ujian Belum Dimulai</title>
-            <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
-            <link href="vendor/fonts/poppins.css" rel="stylesheet">
-            <style>
-                * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif; }
-                body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-                .card { border: none; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="row justify-content-center">
-                    <div class="col-md-6">
-                        <div class="card p-5 text-center">
-                            <i class="bi bi-clock text-primary" style="font-size: 5rem;"></i>
-                            <h2 class="mt-4 fw-bold">Ujian Belum Dimulai</h2>
-                            <p class="text-muted"><?= htmlspecialchars($ujian['judul_ujian']) ?></p>
-                            <p class="text-muted">Ujian akan dimulai pada <?= date('d M Y H:i', strtotime($ujian['tanggal_mulai'])) ?></p>
-                            <a href="index.php" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-2"></i>Kembali</a>
-                        </div>
+$schedule = is_exam_schedule_active($db, $ujian);
+if (!$schedule['active']) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><?= $schedule['reason'] ?></title>
+        <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+        <link href="vendor/fonts/poppins.css" rel="stylesheet">
+        <style>
+            * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif; }
+            body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+            .card { border: none; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card p-5 text-center">
+                        <i class="bi bi-clock text-primary" style="font-size: 5rem;"></i>
+                        <h2 class="mt-4 fw-bold"><?= $schedule['reason'] ?></h2>
+                        <p class="text-muted"><?= htmlspecialchars($ujian['judul_ujian']) ?></p>
+                        <p class="text-muted"><?= $schedule['reason'] === 'Ujian belum dimulai' ? 'Ujian akan dimulai pada' : 'Ujian telah berakhir pada' ?> <?= $schedule['display_date'] ?></p>
+                        <a href="index.php" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-2"></i>Kembali</a>
                     </div>
                 </div>
             </div>
-        </body>
-        </html>
-        <?php
-        exit;
-    }
-    if (!empty($ujian['tanggal_selesai']) && $now > $ujian['tanggal_selesai']) {
-        ?>
-        <!DOCTYPE html>
-        <html lang="id">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Ujian Berakhir</title>
-            <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
-            <link href="vendor/fonts/poppins.css" rel="stylesheet">
-            <style>
-                * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif; }
-                body { background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-                .card { border: none; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="row justify-content-center">
-                    <div class="col-md-6">
-                        <div class="card p-5 text-center">
-                            <i class="bi bi-x-circle-fill text-danger" style="font-size: 5rem;"></i>
-                            <h2 class="mt-4 fw-bold">Ujian Telah Berakhir</h2>
-                            <p class="text-muted"><?= htmlspecialchars($ujian['judul_ujian']) ?></p>
-                            <p class="text-muted">Ujian telah berakhir pada <?= date('d M Y H:i', strtotime($ujian['tanggal_selesai'])) ?></p>
-                            <a href="index.php" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-2"></i>Kembali</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-        <?php
-        exit;
-    }
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
 if ($ujian['status'] !== 'aktif') {
@@ -118,9 +82,9 @@ if ($ujian['status'] !== 'aktif') {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Ujian Ditutup</title>
-        <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
-        <link href="vendor/fonts/poppins.css" rel="stylesheet">
+<link href="assets/css/common.css" rel="stylesheet">
+    <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
         <style>
             * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Poppins', sans-serif; }
             body { background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -894,26 +858,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             .btn-start, .btn-submit { width: auto; display: inline-block; }
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Timer Warning Styles */
-        @keyframes blinkRed {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        .timer-danger {
-            animation: blinkRed 1s infinite !important;
-            color: #dc3545 !important;
-        }
-        .timer-warning {
-            color: #ffc107 !important;
-        }
-        
-        /* Summary Modal */
-        .summary-modal {
+        /* === Shared (in common.css) ===
+        @keyframes spin {}
+        @keyframes blinkRed {}
+        .timer-danger {}
+        .timer-warning {}
+        .confirm-modal {}
+        .confirm-content {}
+        .toast-container {}
+        ================================= */
+
+        /* ─── Auto-save Status Enhanced ─── */
+        #autoSaveStatus {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.7);
@@ -1013,43 +969,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             color: white;
         }
 
-        /* ─── Toast Notification ─── */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 99999;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            pointer-events: none;
-        }
-        .toast-container .toast-item {
-            pointer-events: auto;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 14px 20px;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-            color: white;
-            font-size: 0.9rem;
-            transform: translateX(120%);
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            max-width: 380px;
-            min-width: 280px;
-        }
-        .toast-container .toast-item.show { transform: translateX(0); }
-        .toast-container .toast-item.toast-success { background: #10b981; }
-        .toast-container .toast-item.toast-error { background: #ef4444; }
-        .toast-container .toast-item.toast-warning { background: #f59e0b; }
-        .toast-container .toast-item.toast-info { background: #3b82f6; }
-        .toast-container .toast-icon { font-size: 1.3rem; flex-shrink: 0; }
-        .toast-container .toast-text { flex: 1; }
-        .toast-container .toast-text strong { display: block; font-weight: 600; }
-        .toast-container .toast-text small { opacity: 0.9; font-size: 0.85rem; }
-
-        /* ─── Auto-save Status Enhanced ─── */
+        /* ─── Auto-save Status ─── */
         #autoSaveStatus {
             display: flex;
             align-items: center;
@@ -1061,39 +981,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             transition: all 0.3s ease;
             white-space: nowrap;
         }
-        #autoSaveStatus.saving {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        #autoSaveStatus.saved {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        #autoSaveStatus.error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
+        #autoSaveStatus.saving { background: #fef3c7; color: #92400e; }
+        #autoSaveStatus.saved { background: #d1fae5; color: #065f46; }
+        #autoSaveStatus.error { background: #fee2e2; color: #991b1b; }
 
-        /* ─── Confirmation Modal ─── */
-        .confirm-modal {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            animation: fadeIn 0.3s ease-out;
-        }
-        .confirm-content {
-            background: white;
-            border-radius: 20px;
-            max-width: 420px;
-            width: 90%;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            animation: slideUp 0.3s ease-out;
-        }
+        /* ─── Confirmation Modal (shared via common.css) ─── */
     </style>
 </head>
 <body>
@@ -1369,7 +1261,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
             }
             
             if (!SOAL_DATA || SOAL_DATA.length === 0) {
-                console.error('No questions loaded!');
                 return;
             }
             
@@ -1441,7 +1332,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                     }
                 }
             } catch (e) {
-                console.log('Tidak ada cache tersimpan');
+                // No saved cache — continue with empty state
             }
         }
         
@@ -1462,7 +1353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                 }
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             } catch (e) {
-                console.log('Gagal menyimpan ke localStorage');
+                // localStorage not available — silently continue
             }
         }
         
@@ -1503,14 +1394,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
               const elem = document.documentElement;
               try {
                   if (elem.requestFullscreen) {
-                      elem.requestFullscreen().catch(e => console.warn('Fullscreen request failed:', e));
+                      elem.requestFullscreen().catch(() => {});
                   } else if (elem.webkitRequestFullscreen) { /* Safari */
                       elem.webkitRequestFullscreen();
                   } else if (elem.msRequestFullscreen) { /* IE11 */
                       elem.msRequestFullscreen();
                   }
-              } catch(e) {
-                  console.warn('Fullscreen error:', e);
+            } catch(e) {
+                // Fullscreen not supported — silently skip
               }
           }
          
@@ -1533,23 +1424,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
               try {
                   if ('wakeLock' in navigator) {
                       wakeLockObj = await navigator.wakeLock.request('screen');
-                      wakeLockObj.addEventListener('release', () => {
-                          console.log('Wake Lock released');
-                      });
-                      console.log('Wake Lock active — screen will not sleep');
-                  } else {
-                      console.log('Wake Lock API not supported on this device');
-                  }
-              } catch (e) {
-                  console.warn('Wake Lock request failed:', e.name, e.message);
+                     wakeLockObj.addEventListener('release', () => {});
+                    } catch (e) {
+                        // Wake Lock not supported — silently skip
+                         // Wake Lock not supported — silently skip
               }
           }
           
           function releaseWakeLock() {
               if (wakeLockObj) {
                   wakeLockObj.release();
-                  wakeLockObj = null;
-                  console.log('Wake Lock released manually');
+                    wakeLockObj = null;
               }
           }
           
@@ -1649,11 +1534,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                   // Re-enter fullscreen - this is a valid user gesture
                   const elem = document.documentElement;
                   if (elem.requestFullscreen) {
-                      elem.requestFullscreen().then(() => {
-                          console.log('Fullscreen re-entered from modal');
+                    elem.requestFullscreen().then(() => {
                           if (isFinal) setTimeout(submitFinal, 500);
-                       }).catch(e => {
-                           console.error('Failed to re-enter fullscreen:', e);
+                    }).catch(e => {
+                        showToast('Gagal memasuki fullscreen.', 'error');
                            showToast('Gagal masuk fullscreen. Coba lagi.', 'warning');
                        });
                   } else if (elem.webkitRequestFullscreen) {
@@ -1691,7 +1575,7 @@ function initExamFeatures() {
                 checkDeviceFingerprint();
                 <?php endif; ?>
             })
-            .catch(e => console.log('Token init skipped'));
+            .catch(e => {});
             
             const savedNis = localStorage.getItem('exam_nis');
             if (savedNis) {
@@ -1761,7 +1645,7 @@ function initExamFeatures() {
             
             const totalPages = Math.ceil(SOAL_DATA.length / SOAL_PER_HALAMAN);
             if (page < 1 || page > totalPages) {
-                console.error('Invalid page:', page);
+                return;
                 return;
             }
             
@@ -1867,7 +1751,7 @@ function initExamFeatures() {
                     checkCompletion(savedNis);
                 }
             } catch (e) {
-                console.error('Failed to initialize:', e);
+                // Initialization failed — silently continue
             }
         }
         
@@ -1879,7 +1763,6 @@ function initExamFeatures() {
             }
             
             try {
-                console.log('Verifying code:', kode);
                 const res = await fetch(API_URL, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -1895,7 +1778,6 @@ function initExamFeatures() {
                 }
                 
                 const data = await res.json();
-                console.log('Verify response:', data);
                 
                 if (data.valid === true) {
                     // Show exam rules warning first before showing exam content
@@ -1917,7 +1799,7 @@ function initExamFeatures() {
 
                 }
             } catch (e) {
-                console.error('Verify error:', e);
+                // Verification failed — user will see toast error
                 showToast('Gagal memverifikasi kode. Silakan coba lagi.', 'error');
             }
         }
@@ -2197,7 +2079,7 @@ function initExamFeatures() {
                     })
                 });
             } catch (e) {
-                console.error('Failed to log violation:', e);
+                // Violation logging failed — silently continue
             }
         }
         
@@ -2269,7 +2151,7 @@ function initExamFeatures() {
                     loadSavedAnswers(data.saved_data);
                 }
             } catch (e) {
-                console.error('Check completion failed:', e);
+                // Completion check failed — silently continue
             }
         }
         
@@ -2352,7 +2234,7 @@ function initExamFeatures() {
                         localStorage.setItem('exam_nis', nis);
                         checkCompletion(nis);
                     }
-                }).catch(console.error);
+                }).catch(() => {});
             }
             return true;
         }
@@ -2463,7 +2345,7 @@ function initExamFeatures() {
                     showToast(data.message || 'Kode ujian salah!', 'error');
                 }
             } catch (e) {
-                console.error('Failed to verify code:', e);
+                // Code verification failed — user will see toast error
                 showToast('Gagal memverifikasi kode. Silakan coba lagi.', 'error');
             }
         }
@@ -2486,15 +2368,13 @@ function initExamFeatures() {
             
             if (answeredCount < totalSoal) {
                 // Hanya warning client-side — tidak dicatat ke server agar tidak kena penalti
-                console.warn('Submit ditunda: jawaban belum lengkap (' + answeredCount + '/' + totalSoal + ')');
                 
                 // Show custom modal instead of alert (prevents fullscreen exit)
                 showIncompleteModal(answeredCount, totalSoal);
                 return;
             }
             
-            console.log('Submitting answers:', answers);
-            console.log('Total answered:', answeredCount);
+            // Debug logging removed - answers contain sensitive student data
             
             // Set flags BEFORE anything else
             isSubmittingExam = true;
@@ -2504,9 +2384,6 @@ function initExamFeatures() {
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Mengirim...';
             btn.disabled = true;
-            
-            console.log('Submitting with csrfToken:', csrfToken);
-            console.log('Answers:', answers);
             
             // Exit fullscreen before submitting
             exitFullscreen();
@@ -2526,7 +2403,6 @@ function initExamFeatures() {
                 })
             })
             .then(r => {
-                console.log('Submit response status:', r.status);
                 return r.json();
             })
             .then(data => {
@@ -2542,7 +2418,6 @@ function initExamFeatures() {
                 }
             })
             .catch(err => {
-                console.error(err);
                 showToast('Gagal mengirim jawaban. Silakan coba lagi.', 'error');
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -2808,7 +2683,6 @@ function initExamFeatures() {
                     answered.add(radio.name);
                     const soalId = radio.name.replace('jawaban_', '');
                     answers[soalId] = radio.value;
-                    console.log('Saved answer:', soalId, '=', radio.value);
                     autoSaveAnswer(soalId, radio.value);
                 }
             });
@@ -2940,7 +2814,7 @@ function initExamFeatures() {
                     const tickAudio = document.getElementById('tickSound');
                     if (tickAudio) {
                         tickAudio.loop = true;
-                        tickAudio.play().catch(e => console.log('Audio play failed:', e));
+                        tickAudio.play().catch(() => {});
                     }
                 }
             }
@@ -2977,7 +2851,6 @@ function initExamFeatures() {
                     
                     const nis = document.querySelector('input[name="nis"]')?.value.trim();
                     if (nis && Object.keys(allAnswers).length > 0) {
-                        console.log('Auto-saving to server...');
                         fetch(API_URL, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -2993,7 +2866,6 @@ function initExamFeatures() {
                             })
                         }).then(r => r.json()).then(data => {
                             if (data.success) {
-                                console.log('Auto-saved to server successfully');
                                 const statusEl = document.getElementById('autoSaveStatus');
                                 if (statusEl) {
                                     statusEl.className = 'saved';
@@ -3013,7 +2885,7 @@ function initExamFeatures() {
                                 }
                             }
                         }).catch(e => {
-                            console.error('Auto-save failed:', e);
+                            showToast('Auto-save gagal. Silakan coba lagi.', 'error');
                             const statusEl = document.getElementById('autoSaveStatus');
                             if (statusEl) {
                                 statusEl.className = 'error';

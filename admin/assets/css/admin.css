@@ -936,3 +936,37 @@ body {
   border-color: var(--primary);
   color: var(--primary);
 }
+
+.warning-box {
+  background: var(--danger-light);
+  border: 1px solid var(--danger);
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.filter-box {
+  background: var(--secondary-light);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+}
+.access-denied-page {
+  background: var(--secondary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+}
+
+.badge-level {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+}
+.log-context {
+  font-family: monospace;
+  font-size: 0.8rem;
+  max-width: 300px;
+  word-break: break-word;
+}

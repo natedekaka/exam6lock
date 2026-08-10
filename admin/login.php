@@ -1,10 +1,55 @@
 <?php
 // admin/login.php - Halaman Login Admin
 
+require_once '../config/security_headers.php';
+
 session_start();
+
+// Rate limiting: Maksimal 5 percobaan login per 15 menit per IP
+function checkRateLimit($identifier, $maxAttempts = 5, $windowSeconds = 900) {
+    $rateFile = sys_get_temp_dir() . '/rate_login_' . md5($identifier) . '.json';
+    
+    $attempts = [];
+    if (file_exists($rateFile)) {
+        $data = json_decode(file_get_contents($rateFile), true);
+        if ($data) $attempts = $data;
+    }
+    
+    $now = time();
+    $attempts = array_filter($attempts, fn($t) => ($now - $t) < $windowSeconds);
+    
+    if (count($attempts) >= $maxAttempts) {
+        $oldestAttempt = min($attempts);
+        $retryAfter = $windowSeconds - ($now - $oldestAttempt);
+        return ['allowed' => false, 'retry_after' => $retryAfter];
+    }
+    
+    return ['allowed' => true, 'attempts_left' => $maxAttempts - count($attempts)];
+}
+
+function recordLoginAttempt($identifier) {
+    $rateFile = sys_get_temp_dir() . '/rate_login_' . md5($identifier) . '.json';
+    
+    $attempts = [];
+    if (file_exists($rateFile)) {
+        $data = json_decode(file_get_contents($rateFile), true);
+        if ($data) $attempts = $data;
+    }
+    
+    $attempts[] = time();
+    file_put_contents($rateFile, json_encode($attempts));
+}
+
+function clearRateLimit($identifier) {
+    $rateFile = sys_get_temp_dir() . '/rate_login_' . md5($identifier) . '.json';
+    if (file_exists($rateFile)) {
+        unlink($rateFile);
+    }
+}
 
 require_once '../config/database.php';
 require_once '../config/init_sekolah.php';
+require_once '../config/log_helper.php';
 
 $sekolah = getKonfigurasiSekolah($conn);
 
@@ -48,7 +93,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'];
     $remember = isset($_POST['remember']);
     
-    if ($username && $password) {
+    $clientIP = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $rateKey = "admin_{$username}_{$clientIP}";
+    $rateCheck = checkRateLimit($rateKey);
+    
+    if (!$rateCheck['allowed']) {
+        $message = "Terlalu banyak percobaan login. Coba lagi dalam " . ceil($rateCheck['retry_after'] / 60) . " menit.";
+        logSecurity('Admin login rate limited', ['username' => $username]);
+    } elseif ($username && $password) {
         $stmt = $conn->prepare("SELECT * FROM admin_users WHERE username = ?");
         $stmt->bind_param("s", $username);
         $stmt->execute();
@@ -56,6 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($user = $result->fetch_assoc()) {
             if (password_verify($password, $user['password'])) {
+                session_regenerate_id(true);
+                
                 $_SESSION['admin_id'] = $user['id'];
                 $_SESSION['admin_nama'] = $user['nama_lengkap'];
                 $_SESSION['admin_username'] = $user['username'];
@@ -85,18 +139,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 require_once '../config/audit_helper.php';
                 logAudit($conn, $user['id'], $username, 'LOGIN', 'ADMIN', $user['id'], 'Login berhasil');
                 
+                clearRateLimit($rateKey);
+                
                 header('Location: index.php');
                 exit;
             } else {
                 $message = 'Password salah!';
+                recordLoginAttempt($rateKey);
+                logSecurity('Admin login failed - wrong password', ['username' => $username]);
             }
         } else {
             $message = 'Username tidak ditemukan!';
+            recordLoginAttempt($rateKey);
+            logSecurity('Admin login failed - user not found', ['username' => $username]);
         }
         $stmt->close();
     } else {
         $message = 'Mohon isi username dan password!';
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($message)) {
 }
 ?>
 
@@ -106,6 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Admin - Sistem Ujian Online</title>
+    <link href="../assets/css/common.css" rel="stylesheet">
+    <link href="../assets/css/login.css" rel="stylesheet">
     <link href="../vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
     <style>

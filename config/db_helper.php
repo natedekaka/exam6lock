@@ -103,4 +103,84 @@ class DBHelper {
         $stmt->close();
         return $result;
     }
+
+    public function columnExists($table, $column) {
+        $result = $this->conn->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+        return $result && $result->num_rows > 0;
+    }
+
+    public function getColumns($table) {
+        $result = $this->conn->query("SHOW COLUMNS FROM `$table`");
+        $columns = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $columns[] = $row['Field'];
+            }
+        }
+        return $columns;
+    }
+
+    public function tableExists($table) {
+        $result = $this->conn->query("SHOW TABLES LIKE '$table'");
+        return $result && $result->num_rows > 0;
+    }
+
+    /**
+     * Ensure a table exists, creating it if necessary.
+     * If the table doesn't exist, createMigrationHistory must be handled separately.
+     */
+    public function ensureTable($table, $schema) {
+        if (!$this->tableExists($table)) {
+            $this->conn->query("CREATE TABLE `$table` ({$schema})");
+        }
+    }
+
+    /**
+     * Ensure a column exists on a table, adding it if necessary.
+     */
+    public function ensureColumnExists($table, $column, $definition) {
+        if (!$this->columnExists($table, $column)) {
+            $this->conn->query("ALTER TABLE `$table` ADD COLUMN {$column} {$definition}");
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Ensure a migration history table exists for tracking applied migrations.
+     */
+    public function createMigrationHistory() {
+        $this->ensureTable('migrations_history', '
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `migration_name` VARCHAR(255) NOT NULL,
+            `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `applied_by` VARCHAR(100) NULL,
+            UNIQUE KEY `unique_migration` (`migration_name`)
+        ');
+    }
+
+    /**
+     * Record that a migration has been applied.
+     */
+    public function recordMigration($name) {
+        $this->createMigrationHistory();
+        $stmt = $this->conn->prepare("INSERT IGNORE INTO migrations_history (migration_name) VALUES (?)");
+        $stmt->bind_param("s", $name);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
+    }
+
+    /**
+     * Check if a migration has already been applied.
+     */
+    public function isMigrationApplied($name) {
+        $stmt = $this->conn->prepare("SELECT id FROM migrations_history WHERE migration_name = ? LIMIT 1");
+        $stmt->bind_param("s", $name);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $exists = $result->num_rows > 0;
+        $stmt->close();
+        return $exists;
+    }
 }

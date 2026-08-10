@@ -93,8 +93,11 @@ $avatar_char = strtoupper(substr($admin_nama, 0, 1));
 			<a href="manage_users.php" class="<?= $active_page === 'manage_users.php' ? 'active' : '' ?>">
 				<i class="bi bi-shield-lock"></i> Kelola Admin
 			</a>
-			<a href="audit_log.php" class="<?= $active_page === 'audit_log.php' ? 'active' : '' ?>">
+            <a href="audit_log.php" class="<?= $active_page === 'audit_log.php' ? 'active' : '' ?>">
 				<i class="bi bi-journal-text"></i> Audit Log
+			</a>
+			<a href="log_aplikasi.php" class="<?= $active_page === 'log_aplikasi.php' ? 'active' : '' ?>">
+				<i class="bi bi-bug"></i> Log Aplikasi
 			</a>
 			<a href="backup_restore.php" class="<?= $active_page === 'backup_restore.php' ? 'active' : '' ?>">
 				<i class="bi bi-cloud-arrow-up"></i> Backup &amp; Restore

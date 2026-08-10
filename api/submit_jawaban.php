@@ -1,15 +1,43 @@
 <?php
 // api/submit_jawaban.php - AJAX API untuk submit jawaban ujian
 
+require_once '../config/security_headers.php';
+
 session_start();
 
-error_reporting(0);
+// Log errors instead of suppressing them entirely
+error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
+// Register error log handler — sends all errors to our logger
+set_error_handler(function($severity, $message, $file, $line) {
+    $response['success'] = false;
+    $response['message'] = 'Server error. Silakan coba lagi.';
+    logError("PHP Error [$severity]: $message", ['file' => $file, 'line' => $line]);
+    echo json_encode($response);
+    exit;
+});
+
+// Register fatal error handler
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE])) {
+        $response['success'] = false;
+        $response['message'] = 'Server error. Silakan coba lagi.';
+        logError("Fatal Error [{$error['type']}]: {$error['message']}", ['file' => $error['file'], 'line' => $error['line']]);
+        echo json_encode($response);
+        exit;
+    }
+});
+
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+
+// CORS: Hanya izinkan origin yang sama (same-origin policy)
+$allowedOrigin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+header("Access-Control-Allow-Origin: $allowedOrigin");
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, X-CSRF-Token');
+header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -18,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../config/database.php';
 require_once '../config/init_sekolah.php';
+require_once '../config/log_helper.php';
 
 function validateUniqueAttempt($conn, $id_ujian, $nis) {
     $stmt = $conn->prepare("SELECT id FROM hasil_ujian WHERE id_ujian = ? AND nis = ? LIMIT 1");
@@ -100,14 +129,13 @@ try {
         $csrfToken = $input['csrf_token'] ?? '';
         $expectedToken = $input['expected_token'] ?? '';
         
-        // Log for debugging
-        error_log("CSRF Check - Action: $action, Token: " . strlen($csrfToken) . " chars, Expected: " . strlen($expectedToken) . " chars");
-        
         if (empty($csrfToken) || empty($expectedToken)) {
+            logSecurity('CSRF token missing in API request', ['action' => $action]);
             throw new Exception('CSRF token missing');
         }
         
         if (!hash_equals($expectedToken, $csrfToken)) {
+            logSecurity('CSRF token mismatch in API request', ['action' => $action]);
             throw new Exception('Invalid CSRF token');
         }
     }
@@ -162,6 +190,7 @@ try {
 } catch (Exception $e) {
     $response['message'] = $e->getMessage();
     http_response_code(400);
+    logError('API Exception: ' . $e->getMessage(), ['action' => $action ?? 'none', 'input' => array_keys($input ?? [])]);
 }
 
 echo json_encode($response);
@@ -211,8 +240,7 @@ function handleCheckCompletion($conn, $input) {
             ];
             
             // Check if student can retake (has saved answers in jawaban_sementara)
-            $tableExists = $conn->query("SHOW TABLES LIKE 'jawaban_sementara'");
-            if ($tableExists && $tableExists->num_rows > 0) {
+            if ($db->tableExists('jawaban_sementara')) {
                 $stmt2 = $conn->prepare("SELECT answers, nama, kelas FROM jawaban_sementara WHERE id_ujian = ? AND nis = ? LIMIT 1");
                 $stmt2->bind_param("is", $id_ujian, $nis);
                 $stmt2->execute();
@@ -229,8 +257,7 @@ function handleCheckCompletion($conn, $input) {
     $stmt->close();
     
     if (!$response['completed']) {
-        $tableExists = $conn->query("SHOW TABLES LIKE 'jawaban_sementara'");
-        if ($tableExists && $tableExists->num_rows > 0) {
+        if ($db->tableExists('jawaban_sementara')) {
             $stmt = $conn->prepare("SELECT answers, nama, kelas, updated_at FROM jawaban_sementara WHERE id_ujian = ? AND nis = ?");
             $stmt->bind_param("is", $id_ujian, $nis);
             $stmt->execute();
@@ -286,8 +313,7 @@ function handleAutoSave($conn, $input) {
         $response['message'] = 'Jawaban tersimpan';
         $response['saved_count'] = is_array($answers) ? count($answers) : 0;
     } else {
-        $createTable = $conn->query("SHOW TABLES LIKE 'jawaban_sementara'");
-        if ($createTable && $createTable->num_rows === 0) {
+        if (!$db->tableExists('jawaban_sementara')) {
             $conn->query("
                 CREATE TABLE IF NOT EXISTS `jawaban_sementara` (
                     `id` int NOT NULL AUTO_INCREMENT,
@@ -396,8 +422,7 @@ function handleSubmitFinal($conn, $input) {
             throw new Exception('Soal tidak ditemukan');
         }
         
-        error_log("Submit - Answers received: " . json_encode($answers));
-        error_log("Submit - Total questions: " . count($soal_list));
+        logInfo('Exam submission received', ['total_questions' => count($soal_list)]);
         
         $total_skor = 0;
         $detail_jawaban = [];
@@ -406,7 +431,7 @@ function handleSubmitFinal($conn, $input) {
             $jawaban = isset($answers[(string)$soal_id]) ? $answers[(string)$soal_id] : (isset($answers[$soal_id]) ? $answers[$soal_id] : '');
             $is_correct = (strtolower($jawaban) === strtolower($soal['kunci_jawaban']));
             
-            error_log("Question $soal_id: student answer = '$jawaban', correct = '{$soal['kunci_jawaban']}', is_correct = " . ($is_correct ? 'true' : 'false'));
+            logInfo('Answer processed', ['soal_id' => $soal_id, 'is_correct' => $is_correct]);
             
             if ($is_correct) {
                 $total_skor += $soal['poin'];
@@ -432,8 +457,8 @@ function handleSubmitFinal($conn, $input) {
         $violation_count = 0;
         $penalty = 0;
         $skor_awal = $total_skor; // Save original score before penalty
-        $violation_table = $conn->query("SHOW TABLES LIKE 'exam_violations'");
-        if ($violation_table && $violation_table->num_rows > 0) {
+        $violation_table = $db->tableExists('exam_violations');
+        if ($violation_table) {
             $stmt_v = $conn->prepare("SELECT COUNT(*) as total FROM exam_violations WHERE id_ujian = ? AND nis = ?");
             $stmt_v->bind_param("is", $id_ujian, $nis);
             $stmt_v->execute();
@@ -452,14 +477,14 @@ function handleSubmitFinal($conn, $input) {
         
         $detail_jawaban_json = json_encode($detail_jawaban);
         
+        global $db;
+        
         // Check if skor_awal column exists
-        $checkSkorAwal = $conn->query("SHOW COLUMNS FROM hasil_ujian LIKE 'skor_awal'");
-        if (!$checkSkorAwal || $checkSkorAwal->num_rows === 0) {
+        if (!$db->columnExists('hasil_ujian', 'skor_awal')) {
             $conn->query("ALTER TABLE hasil_ujian ADD COLUMN skor_awal INT DEFAULT NULL AFTER total_skor");
         }
         
-        $checkCols = $conn->query("SHOW COLUMNS FROM hasil_ujian LIKE 'detail_jawaban'");
-        if ($checkCols && $checkCols->num_rows > 0) {
+        if ($db->columnExists('hasil_ujian', 'detail_jawaban')) {
             $stmt = $conn->prepare("INSERT INTO hasil_ujian (id_ujian, nis, nama, kelas, total_skor, skor_awal, detail_jawaban) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("isssiis", $id_ujian, $nis, $nama, $kelas, $total_skor, $skor_awal, $detail_jawaban_json);
         } else {
@@ -535,8 +560,8 @@ function handleGetSaved($conn, $input) {
     $id_ujian = (int)$input['id_ujian'];
     $nis = $conn->real_escape_string($input['nis']);
     
-    $tableExists = $conn->query("SHOW TABLES LIKE 'jawaban_sementara'");
-    if ($tableExists->num_rows === 0) {
+    global $db;
+    if (!$db->tableExists('jawaban_sementara')) {
         return $response;
     }
     

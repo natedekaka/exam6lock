@@ -148,8 +148,7 @@ if ($id_ujian_terpilih > 0) {
     $stmt->close();
     
     // Check if jawaban_sementara has ip_address column
-    $hasIp = $conn->query("SHOW COLUMNS FROM jawaban_sementara LIKE 'ip_address'");
-    $hasIpCol = ($hasIp && $hasIp->num_rows > 0);
+    $hasIpCol = $db->columnExists('jawaban_sementara', 'ip_address');
     
     // Ambil data dari jawaban_sementara (sedang ujian)
     if ($hasIpCol) {
@@ -177,8 +176,7 @@ if ($id_ujian_terpilih > 0) {
     $stmt->close();
     
     // Check if hasil_ujian has ip_address column
-    $hasIp2 = $conn->query("SHOW COLUMNS FROM hasil_ujian LIKE 'ip_address'");
-    $hasIpCol2 = ($hasIp2 && $hasIp2->num_rows > 0);
+    $hasIpCol2 = $db->columnExists('hasil_ujian', 'ip_address');
     
     // Ambil data dari hasil_ujian (sudah submit)
     if ($hasIpCol2) {

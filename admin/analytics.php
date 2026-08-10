@@ -1,5 +1,7 @@
 <?php
 
+require_once '../config/security_headers.php';
+
 session_start();
 
 if (!isset($_SESSION['csrf_token'])) {
@@ -8,8 +10,6 @@ if (!isset($_SESSION['csrf_token'])) {
 $csrf_token = $_SESSION['csrf_token'];
 
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;");
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');

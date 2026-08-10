@@ -1,12 +1,11 @@
 <?php
 // admin/import_soal.php - Import Massal soal dari Excel/CSV
 
+require_once '../config/security_headers.php';
+
 session_start();
 
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: ../uploads/;");
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
-header("Referrer-Policy: strict-origin-when-cross-origin");
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');

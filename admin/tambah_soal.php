@@ -1,13 +1,11 @@
 <?php
 // admin/tambah_soal.php - Bank Soal dengan Upload Gambar (Secure & Responsive)
 
+require_once '../config/security_headers.php';
+
 session_start();
 
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;");
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
-header("Referrer-Policy: strict-origin-when-cross-origin");
-header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
