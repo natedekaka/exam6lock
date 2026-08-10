@@ -1253,6 +1253,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
         let fullscreenExitHandler = null;
         let fsViolationCount = 0;
         let wasFs = false;
+
+        // Client-side error capture — send JS errors to server log
+        window.addEventListener('error', function(e) {
+            if (examFinished) return;
+            fetch('api/log_client_error.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    level: 'error',
+                    error: e.message,
+                    url: window.location.href,
+                    line: e.lineno,
+                    column: e.colno,
+                    stack: e.error ? e.error.stack : null
+                })
+            }).catch(() => {});
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            if (examFinished) return;
+            fetch('api/log_client_error.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    level: 'warning',
+                    error: 'Unhandled Promise rejection: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)),
+                    url: window.location.href,
+                    stack: e.reason && e.reason.stack ? e.reason.stack : null
+                })
+            }).catch(() => {});
+        });
         
         function init() {
             if (document.readyState === 'loading') {

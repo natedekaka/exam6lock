@@ -612,6 +612,15 @@ function handleLogViolation($conn, $input) {
     $stmt->bind_param("isss", $id_ujian, $nis, $jenis, $detail);
     $stmt->execute();
     $stmt->close();
+
+    logSecurity('Exam violation recorded', [
+        'aksi' => $jenis,
+        'id_ujian' => $id_ujian,
+        'nis' => $nis,
+        'detail' => $detail,
+        'device_fingerprint' => $device,
+        'client_ip' => $ip,
+    ]);
     
     $result = $conn->query("SELECT COUNT(*) as total FROM exam_violations WHERE id_ujian = $id_ujian AND nis = '$nis'");
     $row = $result->fetch_assoc();
