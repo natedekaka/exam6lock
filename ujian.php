@@ -2270,30 +2270,17 @@ function initExamFeatures() {
         }
         
         function showAlreadyCompleted(result) {
-            // Check if student can retake (has saved answers but can retake)
-            if (result.can_retake) {
-                document.getElementById('formUjian').innerHTML = `
-                    <div class="alert alert-info text-center py-5">
-                        <i class="bi bi-arrow-repeat" style="font-size: 3rem;"></i>
-                        <h3 class="mt-3">Anda Dapat Mengerjakan Ulang</h3>
-                        <p class="mb-2">Jawaban tersimpan ditemukan. Anda dapat mengerjakan ulang ujian ini.</p>
-                        <button class="btn btn-primary mt-3" onclick="startWithIdentity()">
-                            <i class="bi bi-play-fill me-2"></i>Mulai Ujian Ulang
-                        </button>
-                        <a href="index.php" class="btn btn-outline-secondary mt-3 ms-2">Kembali ke Halaman Utama</a>
-                    </div>
-                `;
-            } else {
-                document.getElementById('formUjian').innerHTML = `
-                    <div class="alert alert-warning text-center py-5">
-                        <i class="bi bi-exclamation-triangle-fill" style="font-size: 3rem;"></i>
-                        <h3 class="mt-3">Anda sudah mengerjakan ujian ini</h3>
-                        <p class="mb-2">Skor Anda: <strong>${result.skor}</strong></p>
-                        <p class="text-muted">Tanggal: ${new Date(result.tanggal).toLocaleString('id-ID')}</p>
-                        <a href="index.php" class="btn btn-primary mt-3">Kembali ke Halaman Utama</a>
-                    </div>
-                `;
-            }
+            // Tanpa izin remedi, siswa yang sudah submit tidak bisa mengerjakan ulang.
+            // (Izin remedi ditangani di sisi API: completed=false + siswa bisa lanjut masuk.)
+            document.getElementById('formUjian').innerHTML = `
+                <div class="alert alert-warning text-center py-5">
+                    <i class="bi bi-exclamation-triangle-fill" style="font-size: 3rem;"></i>
+                    <h3 class="mt-3">Anda sudah mengerjakan ujian ini</h3>
+                    <p class="mb-2">Skor Anda: <strong>${result.skor}</strong></p>
+                    <p class="text-muted">Tanggal: ${new Date(result.tanggal).toLocaleString('id-ID')}</p>
+                    <a href="index.php" class="btn btn-primary mt-3">Kembali ke Halaman Utama</a>
+                </div>
+            `;
             document.getElementById('progressIndicator').style.display = 'none';
         }
         
@@ -2334,25 +2321,47 @@ function initExamFeatures() {
             }
             
             if (!identitySaved && csrfToken) {
+                // Cek status terlebih dahulu: kalau sudah pernah submit tanpa izin remedi,
+                // langsung blokir — jangan menulis data auto-save apa pun.
                 fetch(API_URL, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        action: 'auto_save',
+                        action: 'check_completion',
                         id_ujian: ID_UJIAN,
                         nis: nis,
-                        nama: nama,
-                        kelas: kelas,
-                        answers: {},
                         csrf_token: csrfToken,
                         expected_token: csrfToken
                     })
                 }).then(r => r.json()).then(data => {
-                    if (data.success) {
-                        identitySaved = true;
-                        localStorage.setItem('exam_nis', nis);
-                        checkCompletion(nis);
+                    if (data.completed) {
+                        showAlreadyCompleted(data.result);
+                        return;
                     }
+                    if (data.has_saved && data.saved_data) {
+                        loadSavedAnswers(data.saved_data);
+                        return;
+                    }
+                    // Belum pernah submit & tidak ada simpanan → simpan identitas
+                    fetch(API_URL, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            action: 'auto_save',
+                            id_ujian: ID_UJIAN,
+                            nis: nis,
+                            nama: nama,
+                            kelas: kelas,
+                            answers: {},
+                            csrf_token: csrfToken,
+                            expected_token: csrfToken
+                        })
+                    }).then(r => r.json()).then(data2 => {
+                        if (data2.success) {
+                            identitySaved = true;
+                            localStorage.setItem('exam_nis', nis);
+                        }
+                    }).catch(() => {});
                 }).catch(() => {});
             }
             return true;
@@ -2483,7 +2492,7 @@ function initExamFeatures() {
             }
             
             const totalSoal = SOAL_DATA.length;
-            const answeredCount = Object.keys(answers).length;
+            const answeredCount = Object.keys(getValidAnswers()).length;
             
             // Soal yang belum dijawab akan dianggap salah oleh server —
             // siswa tetap boleh mengumpulkan (sudah dikonfirmasi di summary & confirm modal)
@@ -2509,7 +2518,7 @@ function initExamFeatures() {
                     nis: nis,
                     nama: nama,
                     kelas: kelas,
-                    answers: answers,
+                    answers: getValidAnswers(),
                     csrf_token: csrfToken,
                     expected_token: csrfToken
                 })
@@ -2551,9 +2560,20 @@ function initExamFeatures() {
             }
         }
         
+        // Hanya jawaban untuk soal yang benar-benar ada di ujian ini
+        // (mencegah kunci liar seperti 'examMode' dari radio non-soal)
+        function getValidAnswers() {
+            const validIds = new Set(SOAL_DATA.map(s => String(s.id)));
+            const filtered = {};
+            for (const [k, v] of Object.entries(answers)) {
+                if (validIds.has(String(k))) filtered[k] = v;
+            }
+            return filtered;
+        }
+
         function showSummary() {
             const total = SOAL_DATA.length;
-            const answered = Object.keys(answers).length;
+            const answered = Object.keys(getValidAnswers()).length;
             const unanswered = total - answered;
             const raguCount = Object.values(raguRagu).filter(v => v === true).length;
             
@@ -2791,7 +2811,7 @@ function initExamFeatures() {
             const radioButtons = document.querySelectorAll('input[type="radio"]');
             const answered = new Set();
             radioButtons.forEach(radio => {
-                if (radio.checked) {
+                if (radio.checked && radio.name.startsWith('jawaban_')) {
                     answered.add(radio.name);
                     const soalId = radio.name.replace('jawaban_', '');
                     answers[soalId] = radio.value;
@@ -2956,10 +2976,7 @@ function initExamFeatures() {
                 if (now - lastAutoSaveTime >= 60000) { // 60 seconds
                     lastAutoSaveTime = now;
                     // Collect all answers and save
-                    const allAnswers = {};
-                    for (const soalId in answers) {
-                        allAnswers[soalId] = answers[soalId];
-                    }
+                    const allAnswers = getValidAnswers();
                     
                     const nis = document.querySelector('input[name="nis"]')?.value.trim();
                     if (nis && Object.keys(allAnswers).length > 0) {
