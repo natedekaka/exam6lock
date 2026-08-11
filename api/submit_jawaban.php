@@ -205,6 +205,7 @@ echo json_encode($response);
 $conn->close();
 
 function handleCheckCompletion($conn, $input) {
+    global $db;
     $response = ['success' => true, 'completed' => false, 'has_saved' => false, 'saved_data' => null];
     
     if (!isset($input['id_ujian']) || !isset($input['nis'])) {
@@ -218,7 +219,7 @@ function handleCheckCompletion($conn, $input) {
         throw new Exception('NIS is required');
     }
     
-    $stmt = $conn->prepare("SELECT id, total_skor, created_at FROM hasil_ujian WHERE id_ujian = ? AND nis = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, total_skor, waktu_submit FROM hasil_ujian WHERE id_ujian = ? AND nis = ? LIMIT 1");
     $stmt->bind_param("is", $id_ujian, $nis);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -244,7 +245,7 @@ function handleCheckCompletion($conn, $input) {
             $response['message'] = 'Anda sudah mengerjakan ujian ini';
             $response['result'] = [
                 'skor' => $row['total_skor'],
-                'tanggal' => $row['created_at']
+                'tanggal' => $row['waktu_submit']
             ];
             
             // Check if student can retake (has saved answers in jawaban_sementara)
@@ -352,6 +353,7 @@ function handleGetViolationCounts($conn, $input) {
 }
 
 function handleAutoSave($conn, $input) {
+    global $db;
     $response = ['success' => false, 'message' => ''];
     
     if (!isset($input['id_ujian']) || !isset($input['nis']) || !isset($input['answers'])) {
@@ -376,7 +378,7 @@ function handleAutoSave($conn, $input) {
     $namaValue = $nama ?? '';
     $kelasValue = $kelas ?? '';
     
-    $sql = "INSERT INTO jawaban_sEMENTARA (id_ujian, nis, nama, kelas, answers) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nama = VALUES(nama), kelas = VALUES(kelas), answers = VALUES(answers), updated_at = NOW()";
+    $sql = "INSERT INTO jawaban_sementara (id_ujian, nis, nama, kelas, answers) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nama = VALUES(nama), kelas = VALUES(kelas), answers = VALUES(answers), updated_at = NOW()";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("issss", $id_ujian, $nis, $namaValue, $kelasValue, $answersJson);
     
@@ -422,6 +424,7 @@ function handleAutoSave($conn, $input) {
 }
 
 function handleSubmitFinal($conn, $input) {
+    global $db;
     $response = ['success' => false, 'message' => ''];
     
     if (!isset($input['id_ujian']) || !isset($input['nis']) || 
@@ -549,8 +552,6 @@ function handleSubmitFinal($conn, $input) {
         
         $detail_jawaban_json = json_encode($detail_jawaban);
         
-        global $db;
-        
         // Check if skor_awal column exists
         if (!$db->columnExists('hasil_ujian', 'skor_awal')) {
             $conn->query("ALTER TABLE hasil_ujian ADD COLUMN skor_awal INT DEFAULT NULL AFTER total_skor");
@@ -623,6 +624,7 @@ function handleCheckSession($conn, $input) {
 }
 
 function handleGetSaved($conn, $input) {
+    global $db;
     $response = ['success' => true, 'answers' => []];
     
     if (!isset($input['id_ujian']) || !isset($input['nis'])) {
@@ -680,9 +682,19 @@ function handleLogViolation($conn, $input) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     ");
     
-    $conn->query("ALTER TABLE exam_violations ADD COLUMN IF NOT EXISTS status ENUM('active','dismissed') DEFAULT 'active'");
-    $conn->query("ALTER TABLE exam_violations ADD COLUMN IF NOT EXISTS dismissed_by INT NULL AFTER status");
-    $conn->query("ALTER TABLE exam_violations ADD COLUMN IF NOT EXISTS dismissed_at TIMESTAMP NULL AFTER dismissed_by");
+    // MySQL 8 tidak mendukung ADD COLUMN IF NOT EXISTS — cek manual sebelum ALTER
+    $colStatus = $conn->query("SHOW COLUMNS FROM exam_violations LIKE 'status'");
+    if ($colStatus && $colStatus->num_rows === 0) {
+        $conn->query("ALTER TABLE exam_violations ADD COLUMN status ENUM('active','dismissed') DEFAULT 'active' AFTER detail");
+    }
+    $colDismissedBy = $conn->query("SHOW COLUMNS FROM exam_violations LIKE 'dismissed_by'");
+    if ($colDismissedBy && $colDismissedBy->num_rows === 0) {
+        $conn->query("ALTER TABLE exam_violations ADD COLUMN dismissed_by INT NULL AFTER status");
+    }
+    $colDismissedAt = $conn->query("SHOW COLUMNS FROM exam_violations LIKE 'dismissed_at'");
+    if ($colDismissedAt && $colDismissedAt->num_rows === 0) {
+        $conn->query("ALTER TABLE exam_violations ADD COLUMN dismissed_at TIMESTAMP NULL AFTER dismissed_by");
+    }
     
     $stmt = $conn->prepare("INSERT INTO exam_violations (id_ujian, nis, jenis_violation, detail) VALUES (?, ?, ?, ?)");
     $stmt->bind_param("isss", $id_ujian, $nis, $jenis, $detail);
