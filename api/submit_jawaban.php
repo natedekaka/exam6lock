@@ -175,6 +175,14 @@ try {
             $response = handleGetViolations($conn, $input);
             break;
             
+        case 'dismiss_violation':
+            $response = handleDismissViolation($conn, $input);
+            break;
+            
+        case 'get_violation_counts':
+            $response = handleGetViolationCounts($conn, $input);
+            break;
+            
         case 'check_exam_code':
             $response = handleCheckExamCode($conn, $input);
             break;
@@ -275,6 +283,70 @@ function handleCheckCompletion($conn, $input) {
             $stmt->close();
         }
     }
+    
+    return $response;
+}
+
+function handleDismissViolation($conn, $input) {
+    $response = ['success' => false, 'message' => ''];
+    
+    if (!isset($input['violation_id'])) {
+        throw new Exception('Missing violation_id');
+    }
+    
+    // Verify admin session
+    if (!isset($_SESSION['admin_id'])) {
+        throw new Exception('Unauthorized');
+    }
+    
+    $violation_id = (int)$input['violation_id'];
+    $admin_id = (int)$_SESSION['admin_id'];
+    
+    $stmt = $conn->prepare("UPDATE exam_violations SET status = 'dismissed', dismissed_by = ?, dismissed_at = NOW() WHERE id = ? AND (status IS NULL OR status = 'active')");
+    $stmt->bind_param("ii", $admin_id, $violation_id);
+    $stmt->execute();
+    $affected = $stmt->affected_rows;
+    $stmt->close();
+    
+    if ($affected > 0) {
+        $response['success'] = true;
+        $response['message'] = 'Violasi berhasil dibatalkan';
+        logSecurity('Violation dismissed by admin', [
+            'violation_id' => $violation_id,
+            'admin_id' => $admin_id,
+        ]);
+    } else {
+        $response['message'] = 'Violasi tidak ditemukan atau sudah dibatalkan';
+    }
+    
+    return $response;
+}
+
+function handleGetViolationCounts($conn, $input) {
+    $response = ['success' => true, 'counts' => []];
+    
+    if (!isset($input['id_ujian'])) {
+        throw new Exception('Missing id_ujian');
+    }
+    
+    $id_ujian = (int)$input['id_ujian'];
+    
+    // Get counts per NIS for active violations
+    $sql = "
+        SELECT nis, COUNT(*) as total
+        FROM exam_violations
+        WHERE id_ujian = ? AND (status IS NULL OR status = 'active')
+        GROUP BY nis
+    ";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_ujian);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    while ($row = $result->fetch_assoc()) {
+        $response['counts'][] = $row;
+    }
+    $stmt->close();
     
     return $response;
 }
@@ -608,6 +680,10 @@ function handleLogViolation($conn, $input) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     ");
     
+    $conn->query("ALTER TABLE exam_violations ADD COLUMN IF NOT EXISTS status ENUM('active','dismissed') DEFAULT 'active'");
+    $conn->query("ALTER TABLE exam_violations ADD COLUMN IF NOT EXISTS dismissed_by INT NULL AFTER status");
+    $conn->query("ALTER TABLE exam_violations ADD COLUMN IF NOT EXISTS dismissed_at TIMESTAMP NULL AFTER dismissed_by");
+    
     $stmt = $conn->prepare("INSERT INTO exam_violations (id_ujian, nis, jenis_violation, detail) VALUES (?, ?, ?, ?)");
     $stmt->bind_param("isss", $id_ujian, $nis, $jenis, $detail);
     $stmt->execute();
@@ -639,7 +715,7 @@ function handleGetViolations($conn, $input) {
     $id_ujian = (int)$input['id_ujian'];
     $nis = $conn->real_escape_string($input['nis']);
     
-    $result = $conn->query("SELECT * FROM exam_violations WHERE id_ujian = $id_ujian AND nis = '$nis' ORDER BY created_at DESC LIMIT 50");
+    $result = $conn->query("SELECT * FROM exam_violations WHERE id_ujian = $id_ujian AND nis = '$nis' AND (status IS NULL OR status = 'active') ORDER BY created_at DESC LIMIT 50");
     while ($row = $result->fetch_assoc()) {
         $response['violations'][] = $row;
     }

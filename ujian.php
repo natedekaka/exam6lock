@@ -516,16 +516,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
 ?>
 
 <!DOCTYPE html>
-<html lang id>
+<html lang="id">
 <head>
-    <meta charset UTF-8>
-    <meta name viewport content width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no>
-    <meta name description content Ujian Online>
-    <meta name mobile-web-app-capable content yes>
-    <meta name apple-mobile-web-app-capable content yes>
-    <meta name apple-mobile-web-app-status-bar-style content default>
-<title><?= htmlspecialchars($ujian['judul_ujian']) ?> - Ujian Online</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="description" content="Ujian Online">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title><?= htmlspecialchars($ujian['judul_ujian']) ?> - Ujian Online</title>
     <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link href="vendor/fonts/poppins.css" rel="stylesheet">
@@ -1044,6 +1043,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                 <label class="form-label">Masukkan Kode Ujian <span class="text-danger">*</span></label>
                 <input type="text" id="kodeUjianInput" class="form-control" placeholder="Masukkan kode rahasia" autocomplete="off">
             </div>
+            <div class="mb-3">
+                <label class="form-label">Perangkat yang Digunakan</label>
+                <div class="d-flex gap-3 flex-wrap">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="examMode" id="modeDesktop" value="desktop">
+                        <label class="form-check-label" for="modeDesktop"><i class="bi bi-pc-display me-1"></i>Desktop / Mouse</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="examMode" id="modeLaptop" value="laptop">
+                        <label class="form-check-label" for="modeLaptop"><i class="bi bi-laptop me-1"></i>Laptop / Touchpad</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="examMode" id="modeMobile" value="mobile">
+                        <label class="form-check-label" for="modeMobile"><i class="bi bi-phone me-1"></i>HP / Tablet</label>
+                    </div>
+                    <div class="col-12 form-text small mt-1" id="examModeHint" style="display:none;">
+                        <i class="bi bi-magic me-1"></i>Perangkat touch terdeteksi — mode <strong>HP / Tablet</strong> dipilih otomatis.
+                    </div>
+                </div>
+                <div class="form-text small">Pilih sesuai perangkat Anda. Di HP/Touchpad, toleransi klik kanan tidak sengaja lebih tinggi.</div>
+            </div>
             <button type="button" class="btn-code" onclick="verifyExamCode()">
                 <i class="bi bi-check2-circle me-2"></i>Masuk Ujian
             </button>
@@ -1250,6 +1270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
         let tickSoundPlayed = false;
         let timerWarningShown = false;
         let lastAutoSaveTime = 0;
+        let examMode = 'desktop';
         let fullscreenExitHandler = null;
         let fsViolationCount = 0;
         let wasFs = false;
@@ -1311,6 +1332,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                 examContent.style.display = 'none';
                 identitySection.style.display = 'none';
                 questionSection.style.display = 'none';
+                
+                // Auto-detect perangkat touch (HP/Tablet) → pilih mode mobile otomatis
+                const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                const mobileRadio = document.getElementById('modeMobile');
+                if (isTouchDevice && mobileRadio) {
+                    mobileRadio.checked = true;
+                    examMode = 'mobile';
+                    const hint = document.getElementById('examModeHint');
+                    if (hint) hint.style.display = 'block';
+                }
             } else {
                 examContent.style.display = 'block';
                 <?php if (isset($_SESSION['siswa_id']) && empty($ujian['kode_ujian'])): ?>
@@ -1455,10 +1486,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
               try {
                   if ('wakeLock' in navigator) {
                       wakeLockObj = await navigator.wakeLock.request('screen');
-                     wakeLockObj.addEventListener('release', () => {});
-                    } catch (e) {
-                        // Wake Lock not supported — silently skip
-                         // Wake Lock not supported — silently skip
+                      wakeLockObj.addEventListener('release', () => {});
+                  }
+              } catch (e) {
+                  // Wake Lock not supported — silently skip
               }
           }
           
@@ -1800,7 +1831,9 @@ function initExamFeatures() {
                     body: JSON.stringify({
                         action: 'check_exam_code',
                         id_ujian: ID_UJIAN,
-                        kode_ujian: kode
+                        kode_ujian: kode,
+                        csrf_token: csrfToken,
+                        expected_token: csrfToken
                     })
                 });
                 
@@ -1811,7 +1844,7 @@ function initExamFeatures() {
                 const data = await res.json();
                 
                 if (data.valid === true) {
-                    // Show exam rules warning first before showing exam content
+                    examMode = document.querySelector('input[name="examMode"]:checked')?.value || 'desktop';
                     document.getElementById('examCodeForm').style.display = 'none';
                     
                     // Show rules modal with callback to display exam content
@@ -2007,29 +2040,79 @@ function initExamFeatures() {
                 lastActivity = Date.now();
             });
             
-            // === Right-click detection with grace period & notification ===
+            // === Right-click detection — physical click only, not keyboard/menu key ===
+            // Touchpads often map two-finger-tap to right-click; we add a movement
+            // threshold so accidental touchpad taps don't count as violations.
+            // Mobile (HP/Tablet): touch long-press / double-tap bisa mirip klik kanan,
+            // jadi paling longgar — butuh 5x klik cepat + pergerakan 50px.
+            const RIGHT_CLICK_BUFFER = 50;
+            const RIGHT_CLICK_DEBOUNCE = 10000;
             let lastRightClickTime = 0;
-            const RIGHT_CLICK_COOLDOWN = 30000; // 30 detik antar pelanggaran
+            let rightClickTimer = null;
+            let recentRightClicks = [];
+            let mouseMovedAfterRightClick = false;
+            let rightClickStartX = 0, rightClickStartY = 0;
+            const isMobileMode = () => examMode === 'mobile';
+            const isLaptopMode = () => examMode === 'laptop';
+            const RIGHT_CLICK_MOVEMENT_THRESHOLD = isMobileMode() ? 50 : (isLaptopMode() ? 30 : 15);
+            const RIGHT_CLICKS_NEEDED = isMobileMode() ? 5 : (isLaptopMode() ? 3 : 2);
 
-            document.addEventListener('contextmenu', function(e) {
+            // Track mouse movement after a potential right-click
+            document.addEventListener('mousemove', function(e) {
+                if (rightClickTimer !== null) {
+                    const deltaX = Math.abs(e.clientX - rightClickStartX);
+                    const deltaY = Math.abs(e.clientY - rightClickStartY);
+                    if (deltaX > RIGHT_CLICK_MOVEMENT_THRESHOLD || deltaY > RIGHT_CLICK_MOVEMENT_THRESHOLD) {
+                        mouseMovedAfterRightClick = true;
+                    }
+                }
+            });
+
+            document.addEventListener('mousedown', function(e) {
                 if (examFinished) return;
-                e.preventDefault();
+                if (e.button !== 2) return;
 
                 const now = Date.now();
-                if (now - lastRightClickTime < RIGHT_CLICK_COOLDOWN) return;
+
+                if (now - lastRightClickTime < RIGHT_CLICK_DEBOUNCE) return;
                 lastRightClickTime = now;
 
-                violationCount++;
-                logViolation('right_click', 'Siswa mencoba klik kanan');
+                rightClickStartX = e.clientX;
+                rightClickStartY = e.clientY;
+                mouseMovedAfterRightClick = false;
 
-                showToast('⚠️ Klik kanan terdeteksi! (-10 poin). Pelanggaran: ' + violationCount + '/' + maxViolations, 'warning');
+                clearTimeout(rightClickTimer);
+                rightClickTimer = setTimeout(() => {
+                    // Filter out touchpad two-finger taps (usually paired with mouse movement)
+                    if (mouseMovedAfterRightClick) {
+                        return; // This was likely a scroll/select gesture, not intentional right-click
+                    }
 
-                if (violationCount >= maxViolations) {
-                    showToast('❌ Terlalu banyak pelanggaran! Jawaban akan disubmit!', 'danger');
-                    setTimeout(submitFinal, 2000);
-                }
+                    recentRightClicks.push(now);
+                    recentRightClicks = recentRightClicks.filter(t => now - t < RIGHT_CLICK_DEBOUNCE);
 
-                return false;
+                    if (recentRightClicks.length >= RIGHT_CLICKS_NEEDED) {
+                        recentRightClicks = [];
+                        violationCount++;
+                        logViolation('right_click', 'Siswa mencoba klik kanan (deteksi fisik)');
+                        showToast('⚠️ Klik kanan terdeteksi! (-10 poin). Pelanggaran: ' + violationCount + '/' + maxViolations, 'warning');
+
+                        if (violationCount >= maxViolations) {
+                            showToast('❌ Terlalu banyak pelanggaran! Jawaban akan disubmit!', 'danger');
+                            setTimeout(submitFinal, 2000);
+                        }
+                    } else {
+                        showToast('⚠️ Klik kanan terdeteksi. Klik lagi akan tercatat sebagai pelanggaran.', 'warning');
+                    }
+                }, RIGHT_CLICK_BUFFER);
+            });
+
+            // Prevent context menu — but NOT on form inputs (mobile needs long-press for text editing)
+            document.addEventListener('contextmenu', function(e) {
+                const tag = e.target.tagName;
+                const isInput = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable);
+                if (isInput) return; // allow context menu on form fields (mobile text selection)
+                e.preventDefault();
             });
             
             // Copy diizinkan (hanya paste yang diblokir)
