@@ -867,17 +867,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
         .toast-container {}
         ================================= */
 
-        /* ─── Auto-save Status Enhanced ─── */
-        #autoSaveStatus {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            animation: fadeIn 0.3s ease-out;
-        }
+        /* ─── Auto-save Status (badge kecil — BUKAN fullscreen overlay) ─── */
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -1374,7 +1364,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_ujian'])) {
                 if (saved) {
                     const data = JSON.parse(saved);
                     if (data.answers) {
-                        answers = data.answers;
+                        // Hanya pulihkan jawaban untuk soal yang masih ada
+                        // (mencegah jumlah dijawab > jumlah soal dari cache basi)
+                        const validIds = new Set(SOAL_DATA.map(s => String(s.id)));
+                        answers = {};
+                        for (const [k, v] of Object.entries(data.answers)) {
+                            if (validIds.has(String(k))) answers[k] = v;
+                        }
                         optionsCache = data.optionsCache || {};
                         currentPage = data.currentPage || 1;
                         lastSaved = data.timestamp;
@@ -1636,13 +1632,14 @@ function initExamFeatures() {
                 <?php if (!empty($ujian['enable_device_check']) && $ujian['enable_device_check'] === 'ya'): ?>
                 checkDeviceFingerprint();
                 <?php endif; ?>
+                
+                // Cek status selesai setelah token tersedia (hindari CSRF 400)
+                const savedNis = localStorage.getItem('exam_nis');
+                if (savedNis) {
+                    checkCompletion(savedNis);
+                }
             })
             .catch(e => {});
-            
-            const savedNis = localStorage.getItem('exam_nis');
-            if (savedNis) {
-                checkCompletion(savedNis);
-            }
         }
         
         function renderSoal(soalList) {
@@ -2138,7 +2135,9 @@ function initExamFeatures() {
             if (overlayObserver) overlayObserver.disconnect();
             
             let lastOverlayTime = 0;
+            let overlayViolationCount = 0;
             const OVERLAY_COOLDOWN = 15000;
+            const maxOverlayViolations = <?= (int)($ujian['max_violations'] ?? 10) ?>;
             
             overlayObserver = new IntersectionObserver((entries) => {
                 if (examFinished || isSubmittingExam) return;
@@ -2150,15 +2149,15 @@ function initExamFeatures() {
                         if (now - lastOverlayTime < OVERLAY_COOLDOWN) return;
                         lastOverlayTime = now;
                         
-                        violationCount++;
+                        overlayViolationCount++;
                         logViolation('soal_tertutup', 'Area soal tertutup overlay/ aplikasi lain (IntersectionObserver)');
                         
-                        if (violationCount >= maxViolations) {
+                        if (overlayViolationCount >= maxOverlayViolations) {
                             showToast('Area ujian tertutup berulang kali! Jawaban akan disubmit.', 'error');
                             setTimeout(submitFinal, 1500);
                         } else {
-                            const remaining = maxViolations - violationCount;
-                            showToast('Area soal tertutup aplikasi lain!', 'warning', 'Pelanggaran ' + violationCount + '/' + maxViolations + ' — Sisa ' + remaining + 'x');
+                            const remaining = maxOverlayViolations - overlayViolationCount;
+                            showToast('Area soal tertutup aplikasi lain!', 'warning', 'Pelanggaran ' + overlayViolationCount + '/' + maxOverlayViolations + ' — Sisa ' + remaining + 'x');
                         }
                     }
                 });
@@ -2305,7 +2304,12 @@ function initExamFeatures() {
                 document.querySelector('input[name="kelas"]').value = savedData.kelas;
             }
             if (savedData.answers) {
-                answers = savedData.answers;
+                // Hanya pulihkan jawaban untuk soal yang masih ada
+                const validIds = new Set(SOAL_DATA.map(s => String(s.id)));
+                answers = {};
+                for (const [k, v] of Object.entries(savedData.answers)) {
+                    if (validIds.has(String(k))) answers[k] = v;
+                }
                 Object.entries(answers).forEach(([soalId, jawaban]) => {
                     const radio = document.querySelector(`input[name="jawaban_${soalId}"][value="${jawaban}"]`);
                     if (radio) {
